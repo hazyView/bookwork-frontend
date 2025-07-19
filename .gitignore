@@ -1,0 +1,77 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+.svelte-kit/
+build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.test
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Package manager lockfiles (keep package-lock.json, ignore others)
+yarn.lock
+pnpm-lock.yaml
+
+# TypeScript compiled files
+*.tsbuildinfo
+
+# Temporary files
+.tmp/
+.temp/
+
+# Docker
+.dockerignore
+
+# Documentation that shouldn't be in repo
+API_SPECIFICATION.md
+IMPLEMENTATION_SUMMARY.md
+QA_AUDIT_REPORT.md
+
+# Security - never commit secrets
+*.pem
+*.key
+*.cert
+
+# Testing
+coverage/
+.nyc_output/
+
+# SvelteKit
+.svelte-kit/

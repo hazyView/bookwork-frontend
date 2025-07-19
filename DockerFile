@@ -1,0 +1,49 @@
+# WARNING: This Dockerfile is for demonstration purposes only
+# This application uses mock data and is NOT production-ready
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependency files and install them
+COPY package.json package-lock.json ./
+RUN npm ci --only=production
+
+# Copy the rest of the source code
+COPY . .
+
+# Build the SvelteKit app for production
+# Note: This uses adapter-auto which may not work in all container environments
+RUN npm run build
+
+# Stage 2: Create the final, minimal production image
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S sveltekit -u 1001
+
+# Copy built application
+COPY --from=builder --chown=sveltekit:nodejs /app/build ./build
+COPY --from=builder --chown=sveltekit:nodejs /app/package.json ./package.json
+
+# Switch to non-root user
+USER sveltekit
+
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Environment variable for the Node server
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Command to start the application
+# Note: This assumes adapter-node, but config uses adapter-auto
+CMD ["node", "build"]
