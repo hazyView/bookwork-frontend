@@ -1,28 +1,80 @@
-# Dependencies
+# ===== DEPENDENCIES =====
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# Build outputs
+# ===== BUILD OUTPUTS =====
 .svelte-kit/
 build/
 dist/
+.output/
+.vercel/
+.netlify/
 
-# Environment variables
+# ===== ENVIRONMENT VARIABLES & SECRETS =====
 .env
+.env.*
+!.env.example
 .env.local
-.env.production
-.env.test
+.env.development.local
+.env.test.local
+.env.production.local
 
-# IDE and Editor files
+# API Keys and Secrets (never commit)
+**/secrets/
+**/keys/
+*.secret
+*.secrets
+api-keys.json
+credentials.json
+service-account.json
+
+# JWT Secrets
+jwt.secret
+*.jwt.key
+
+# Database credentials
+database.config.js
+db.config.js
+*.db.config.*
+
+# ===== SECURITY FILES =====
+# SSL Certificates and keys
+*.pem
+*.key
+*.cert
+*.crt
+*.csr
+*.p12
+*.pfx
+ssl/
+certs/
+certificates/
+
+# Security tokens and authentication
+*token*
+*auth*
+!src/lib/auth.ts
+!**/auth.config.js
+session.secret
+oauth.config.js
+
+# ===== IDE AND EDITOR FILES =====
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.vim/
+.emacs.d/
+.sublime-project
+.sublime-workspace
+*.sublime-project
+*.sublime-workspace
 
-# OS generated files
+# ===== OS GENERATED FILES =====
 .DS_Store
 .DS_Store?
 ._*
@@ -30,48 +82,150 @@ dist/
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# Logs
+# ===== LOGS AND DEBUG FILES =====
 logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
 
-# Runtime data
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# ===== RUNTIME DATA =====
 pids/
 *.pid
 *.seed
 *.pid.lock
+lib-cov/
 
-# Coverage directory used by tools like istanbul
+# ===== TESTING =====
 coverage/
 *.lcov
+.nyc_output/
+test-results/
+playwright-report/
+test-results.xml
 
-# Package manager lockfiles (keep package-lock.json, ignore others)
+# ===== PACKAGE MANAGER LOCKFILES =====
+# Keep package-lock.json for npm, ignore others
 yarn.lock
 pnpm-lock.yaml
+.pnpm/
 
-# TypeScript compiled files
+# ===== TYPESCRIPT =====
 *.tsbuildinfo
+.tscache/
 
-# Temporary files
+# ===== TEMPORARY FILES =====
 .tmp/
 .temp/
+*.tmp
+*.temp
 
-# Docker
+# ===== DOCKER & CONTAINERIZATION =====
+.docker/
+docker-compose.override.yml
 .dockerignore
 
-# Documentation that shouldn't be in repo
+# ===== SVELTEKIT SPECIFIC =====
+.svelte-kit/
+static/uploads/
+static/user-content/
+
+# ===== DOCUMENTATION & REPORTS =====
+# Internal documentation that shouldn't be public
 API_SPECIFICATION.md
 IMPLEMENTATION_SUMMARY.md
 QA_AUDIT_REPORT.md
+INTERNAL_DOCS.md
+SECURITY_NOTES.md
 
-# Security - never commit secrets
-*.pem
-*.key
-*.cert
+# Generated documentation
+docs/build/
+docs/dist/
 
-# Testing
-coverage/
-.nyc_output/
+# ===== BACKUP FILES =====
+*.backup
+*.bak
+*.old
+*~
 
-# SvelteKit
-.svelte-kit/
+# ===== CLOUD & DEPLOYMENT =====
+# Vercel
+.vercel/
+.vercel.json
+
+# Netlify
+.netlify/
+
+# AWS
+.aws/
+aws-config.json
+
+# Google Cloud
+.gcp/
+gcp-credentials.json
+
+# Firebase
+.firebaserc
+firebase-debug.log
+
+# ===== PERFORMANCE & PROFILING =====
+.cache/
+.parcel-cache/
+.webpack/
+.rollup.cache/
+
+# Bundle analyzer
+bundle-analyzer-report.html
+stats.json
+
+# ===== USER-GENERATED CONTENT =====
+uploads/
+user-uploads/
+static/user-content/
+public/uploads/
+
+# ===== ANALYTICS & MONITORING =====
+.sentry/
+analytics.config.js
+
+# ===== DATABASE =====
+*.sqlite
+*.sqlite3
+*.db
+data/
+database/
+
+# ===== LOCAL CONFIGURATION =====
+local.config.js
+local.settings.json
+.local/
+
+# ===== MISC =====
+.vite/
+*.tgz
+.yarn/
+.pnp.*
+
+# MacOS
+.AppleDouble
+.LSOverride
+
+# Windows
+[Tt]humbs.db
+[Tt]humbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*

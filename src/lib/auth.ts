@@ -5,6 +5,7 @@
 import jwt from 'jsonwebtoken';
 import { browser } from '$app/environment';
 import { writable } from 'svelte/store';
+import { sessionManager } from './sessionManager';
 
 // Environment configuration
 const JWT_SECRET = import.meta.env.VITE_JWT_SECRET || 'fallback-secret-change-in-production';
