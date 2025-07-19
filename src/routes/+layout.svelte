@@ -1,112 +1,87 @@
 <script>
-	import { onMount, onDestroy } from 'svelte';
-	import { user, currentClub, isAuthenticated } from '$lib/stores.js';
-	import { validateAuthToken } from '$lib/api.js';
+	import { onMount } from 'svelte';
+	import { AuthService, user, isAuthenticated } from '$lib/auth.ts';
+	import { currentClub } from '$lib/stores.js';
 	import { mockUserClubs } from '$lib/mockData.js';
 	import Navigation from '$lib/components/Navigation.svelte';
 	import ChatWidget from '$lib/components/ChatWidget.svelte';
+	import ErrorBoundary from '$lib/components/ErrorBoundary.svelte';
 	import '../app.css';
 
-	let appError = null;
 	let loading = true;
 
 	onMount(async () => {
-		// Set up global error handlers
-		const handleError = (event) => {
-			console.error('Global error:', event.error || event.reason);
-			appError = 'Something went wrong. Please refresh the page.';
-		};
-
-		const handleUnhandledRejection = (event) => {
-			console.error('Unhandled promise rejection:', event.reason);
-			appError = 'A network error occurred. Please try again.';
-		};
-
-		window.addEventListener('error', handleError);
-		window.addEventListener('unhandledrejection', handleUnhandledRejection);
-
-		// Attempt to authenticate user
-		try {
-			const token = localStorage.getItem('authToken');
-			if (token) {
-				try {
-					const userData = await validateAuthToken(token);
-					user.set(userData);
-					
-					// Load user's clubs after authentication
-					if (userData && mockUserClubs.length > 0) {
-						currentClub.set(mockUserClubs[0]);
-					}
-				} catch (error) {
-					console.warn('Token validation failed:', error);
-					localStorage.removeItem('authToken');
-					user.set(null);
-					currentClub.set(null);
-				}
-			} else {
-				// For development: simulate auto-login with demo token
-				if (import.meta.env.MODE === 'development') {
-					localStorage.setItem('authToken', 'demo-token');
-					const userData = await validateAuthToken('demo-token');
-					user.set(userData);
-					
-					if (userData && mockUserClubs.length > 0) {
-						currentClub.set(mockUserClubs[0]);
-					}
-				}
+		// Authentication is handled automatically by the auth service
+		// Check if user is authenticated and set up clubs
+		const unsubscribe = user.subscribe((userData) => {
+			if (userData && mockUserClubs.length > 0) {
+				currentClub.set(mockUserClubs[0]);
+			} else if (!userData) {
+				currentClub.set(null);
 			}
-		} catch (error) {
-			console.error('Authentication error:', error);
-			appError = 'Authentication failed. Please try logging in again.';
-		} finally {
-			loading = false;
+		});
+
+		// For development, auto-login with demo credentials if not authenticated
+		if (import.meta.env.MODE === 'development') {
+			const checkAuth = async () => {
+				const isValid = await AuthService.validateToken();
+				if (!isValid) {
+					// Auto-login with demo credentials
+					await AuthService.login('demo@bookwork.com', 'demo-password');
+				}
+			};
+			
+			await checkAuth();
 		}
+
+		loading = false;
 
 		// Cleanup function
 		return () => {
-			window.removeEventListener('error', handleError);
-			window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+			unsubscribe();
 		};
 	});
 
-	function refreshPage() {
-		window.location.reload();
-	}
-
-	function clearError() {
-		appError = null;
+	// Handle logout
+	async function handleLogout() {
+		await AuthService.logout();
 	}
 </script>
 
-{#if loading}
-	<div class="loading-screen">
-		<div class="spinner"></div>
-		<p>Loading BookWorm...</p>
-	</div>
-{:else if appError}
-	<div class="error-boundary">
-		<div class="error-content">
-			<h2>Oops! Something went wrong</h2>
-			<p>{appError}</p>
-			<div class="error-actions">
-				<button class="btn btn-primary" on:click={refreshPage}>
-					Refresh Page
-				</button>
-				<button class="btn btn-secondary" on:click={clearError}>
-					Try Again
-				</button>
+<svelte:head>
+	<title>BookWork - Business Management Platform</title>
+	<meta name="description" content="Comprehensive business management platform for modern organizations" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+</svelte:head>
+
+<ErrorBoundary errorId="root">
+	{#if loading}
+		<div class="loading-screen">
+			<div class="spinner"></div>
+			<p>Loading BookWork...</p>
+		</div>
+	{:else if !$isAuthenticated}
+		<div class="auth-screen">
+			<div class="auth-container">
+				<h1>BookWork</h1>
+				<p>Please sign in to continue</p>
+				{#if import.meta.env.MODE === 'development'}
+					<p class="text-sm text-gray-600 mt-2">
+						Development mode: Authentication will be handled automatically
+					</p>
+				{/if}
 			</div>
 		</div>
-	</div>
-{:else}
-	<div class="app">
-		<Navigation />
-		<main class="main-content">
-			<slot />
-		</main>
-		<ChatWidget />
-	</div>
-{/if}
+	{:else}
+		<div class="app">
+			<Navigation on:logout={handleLogout} />
+			<main class="main-content">
+				<slot />
+			</main>
+			<ChatWidget />
+		</div>
+	{/if}
+</ErrorBoundary>
 
 <style>
 	.app {
@@ -134,39 +109,24 @@
 		color: var(--text-secondary);
 	}
 
-	.error-boundary {
-		min-height: 100vh;
+	.auth-screen {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background-color: var(--bg-color);
-		padding: 2rem;
+		min-height: 100vh;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		color: white;
 	}
 
-	.error-content {
-		max-width: 500px;
+	.auth-container {
 		text-align: center;
-		background: white;
 		padding: 2rem;
-		border-radius: 8px;
-		box-shadow: var(--shadow-lg);
 	}
 
-	.error-content h2 {
-		color: var(--error-color);
+	.auth-container h1 {
+		font-size: 2.5rem;
+		font-weight: bold;
 		margin-bottom: 1rem;
-	}
-
-	.error-content p {
-		color: var(--text-secondary);
-		margin-bottom: 2rem;
-	}
-
-	.error-actions {
-		display: flex;
-		gap: 1rem;
-		justify-content: center;
-		flex-wrap: wrap;
 	}
 
 	.spinner {
@@ -181,5 +141,12 @@
 	@keyframes spin {
 		0% { transform: rotate(0deg); }
 		100% { transform: rotate(360deg); }
+	}
+
+	/* Responsive design */
+	@media (max-width: 768px) {
+		.auth-container h1 {
+			font-size: 2rem;
+		}
 	}
 </style>

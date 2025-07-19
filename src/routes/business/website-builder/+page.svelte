@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { builderModules, selectedModule } from '$lib/stores.js';
 	import { generateId } from '$lib/utils.js';
+	import { validateFormData, sanitizeHTML } from '$lib/validation.js';
+	import SecureStorage from '$lib/secureStorage.js';
 	import { 
 		Type, 
 		Image as ImageIcon, 
@@ -106,12 +108,17 @@
 		}
 	];
 
-	// Save to localStorage whenever modules change
+	// Save to secure storage whenever modules change
 	$: if ($builderModules && typeof window !== 'undefined') {
 		try {
-			localStorage.setItem('websiteBuilder', JSON.stringify($builderModules));
-			saveStatus = 'Saved';
-			setTimeout(() => { saveStatus = ''; }, 2000);
+			const success = SecureStorage.setItem('websiteBuilder', $builderModules);
+			if (success) {
+				saveStatus = 'Saved';
+				setTimeout(() => { saveStatus = ''; }, 2000);
+			} else {
+				saveStatus = 'Save failed';
+				setTimeout(() => { saveStatus = ''; }, 3000);
+			}
 		} catch (error) {
 			console.error('Failed to save website data:', error);
 			saveStatus = 'Save failed';
@@ -120,19 +127,14 @@
 	}
 
 	onMount(() => {
-		// Load from localStorage on mount
-		const saved = localStorage.getItem('websiteBuilder');
-		if (saved) {
-			try {
-				const parsedData = JSON.parse(saved);
-				if (Array.isArray(parsedData) && parsedData.length > 0) {
-					builderModules.set(parsedData);
-					return;
-				}
-			} catch (error) {
-				console.error('Failed to load saved website data:', error);
-				// Initialize with default content on error
-			}
+		// Migrate from localStorage if needed
+		SecureStorage.migrateFromLocalStorage('websiteBuilder');
+		
+		// Load from secure storage on mount
+		const saved = SecureStorage.getItemParsed('websiteBuilder');
+		if (saved && Array.isArray(saved) && saved.length > 0) {
+			builderModules.set(saved);
+			return;
 		}
 		
 		// Initialize with default content if no saved data or loading failed
