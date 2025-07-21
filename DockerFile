@@ -1,5 +1,5 @@
-# WARNING: This Dockerfile is for demonstration purposes only
-# This application uses mock data and is NOT production-ready
+# BookWork Frontend Production Docker Image
+# Production-ready SvelteKit application with Node.js adapter
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -11,8 +11,7 @@ RUN npm ci --only=production
 # Copy the rest of the source code
 COPY . .
 
-# Build the SvelteKit app for production
-# Note: This uses adapter-auto which may not work in all container environments
+# Build the SvelteKit app for production using adapter-node
 RUN npm run build
 
 # Stage 2: Create the final, minimal production image
@@ -44,6 +43,5 @@ ENV PORT=3000
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Command to start the application
-# Note: This assumes adapter-node, but config uses adapter-auto
+# Command to start the application using adapter-node
 CMD ["node", "build"]

@@ -1,46 +1,97 @@
-<script>
+<script lang="ts">
 	import { validateFormData } from '$lib/validation.js';
 	import { createEventDispatcher } from 'svelte';
+	import type { ValidationSchema, ValidationResult } from '$lib/validation.js';
 
-	export let schema = {};
-	export let initialValues = {};
-	export let submitLabel = 'Submit';
-	export let disabled = false;
-	export let validateOnChange = true;
+	/**
+	 * ValidatedForm component props interface
+	 */
+	interface ValidatedFormProps {
+		/**
+		 * Validation schema for form fields
+		 */
+		schema?: ValidationSchema;
+		
+		/**
+		 * Initial form values
+		 */
+		initialValues?: Record<string, any>;
+		
+		/**
+		 * Submit button label
+		 */
+		submitLabel?: string;
+		
+		/**
+		 * Whether the form is disabled
+		 */
+		disabled?: boolean;
+		
+		/**
+		 * Whether to validate on field change
+		 */
+		validateOnChange?: boolean;
+		
+		/**
+		 * Custom CSS class
+		 */
+		class?: string;
+	}
 
-	const dispatch = createEventDispatcher();
+	// Component props with defaults
+	let {
+		schema = {},
+		initialValues = {},
+		submitLabel = 'Submit',
+		disabled = false,
+		validateOnChange = true,
+		class: className = ''
+	}: ValidatedFormProps = $props();
 
-	let formData = { ...initialValues };
-	let errors = {};
-	let isValid = true;
-	let touched = {};
+	// Event dispatcher
+	const dispatch = createEventDispatcher<{
+		submit: { formData: Record<string, any>; isValid: boolean };
+		input: { field: string; value: any; formData: Record<string, any> };
+		validate: { isValid: boolean; errors: Record<string, string[]> };
+	}>();
+
+	let formData: Record<string, any> = $state({ ...initialValues });
+	let errors: Record<string, string[]> = $state({});
+	let isValid: boolean = $state(true);
+	let touched: Record<string, boolean> = $state({});
 
 	// Validate form whenever data changes
 	$: if (validateOnChange && Object.keys(touched).length > 0) {
 		const validation = validateFormData(formData, schema);
 		errors = validation.errors;
 		isValid = validation.isValid;
-		if (validation.isValid) {
+		if (validation.isValid && validation.sanitized) {
 			formData = validation.sanitized;
 		}
+		dispatch('validate', { isValid, errors });
 	}
 
-	function handleInput(field) {
+	function handleInput(field: string): void {
 		touched[field] = true;
 		if (validateOnChange) {
-			const validation = validateFormData({ [field]: formData[field] }, { [field]: schema[field] });
-			if (validation.errors[field]) {
-				errors[field] = validation.errors[field];
-			} else {
-				delete errors[field];
-				formData[field] = validation.sanitized[field];
+			const fieldSchema = schema[field];
+			if (fieldSchema) {
+				const validation = validateFormData({ [field]: formData[field] }, { [field]: fieldSchema });
+				if (validation.errors[field]) {
+					errors[field] = validation.errors[field];
+				} else {
+					delete errors[field];
+					if (validation.sanitized?.[field] !== undefined) {
+						formData[field] = validation.sanitized[field];
+					}
+				}
+				errors = { ...errors };
 			}
-			errors = { ...errors };
 		}
 		dispatch('input', { field, value: formData[field], formData });
 	}
 
-	function handleSubmit(event) {
+	function handleSubmit(event: Event): void {
 		event.preventDefault();
 		
 		// Mark all fields as touched
@@ -52,32 +103,34 @@
 		errors = validation.errors;
 		isValid = validation.isValid;
 
-		if (validation.isValid) {
+		if (validation.isValid && validation.sanitized) {
+			formData = validation.sanitized;
 			dispatch('submit', {
 				formData: validation.sanitized,
-				originalData: formData
+				isValid: true
 			});
 		} else {
-			dispatch('error', {
-				errors: validation.errors,
-				formData
+			dispatch('submit', {
+				formData,
+				isValid: false
 			});
 		}
+		
+		dispatch('validate', { isValid, errors });
 	}
 
-	function resetForm() {
+	function resetForm(): void {
 		formData = { ...initialValues };
 		errors = {};
 		touched = {};
 		isValid = true;
-		dispatch('reset');
 	}
 
-	// Export functions for parent component
+	// Expose reset function to parent
 	export { resetForm };
 </script>
 
-<form on:submit={handleSubmit} novalidate>
+<form on:submit={handleSubmit} novalidate class={className}>
 	<slot 
 		{formData}
 		{errors}
@@ -91,7 +144,7 @@
 		<button 
 			type="submit" 
 			class="btn btn-primary"
-			{disabled}
+			disabled={disabled || !isValid}
 		>
 			{submitLabel}
 		</button>
@@ -100,6 +153,7 @@
 			type="button" 
 			class="btn btn-secondary"
 			on:click={resetForm}
+			disabled={disabled}
 		>
 			Reset
 		</button>

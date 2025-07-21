@@ -10,6 +10,10 @@ import { dev } from '$app/environment';
 // Create rate limiting middleware
 const rateLimitMiddleware = createRateLimitMiddleware();
 
+/**
+ * Global SvelteKit hook that applies security middleware to all requests
+ * Implements comprehensive security headers, rate limiting, HTTPS enforcement, and session management
+ */
 export const handle: Handle = async ({ event, resolve }) => {
 	// Create session middleware instance for this request
 	const sessionMiddleware = createSessionMiddleware();
@@ -29,7 +33,22 @@ export const handle: Handle = async ({ event, resolve }) => {
 			event.locals.session = sessionData;
 		}
 		
-		// Resolve the response
+		// Get URL information for routing decisions
+		const url = new URL(event.request.url);
+		const path = url.pathname;
+		
+		// HTTPS enforcement in production
+		if (!dev && url.protocol !== 'https:') {
+			return new Response(null, {
+				status: 301,
+				headers: {
+					'Location': url.toString().replace('http:', 'https:'),
+					'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload'
+				}
+			});
+		}
+		
+		// Resolve the response with security transformations
 		const response = await resolve(event, {
 			transformPageChunk: ({ html }) => {
 				// In production, replace style blocks with nonce and fix mixed content
@@ -44,24 +63,18 @@ export const handle: Handle = async ({ event, resolve }) => {
 					
 					return processedHtml;
 				}
-				return html;
+				
+				// In development, add security meta tags
+				return html.replace(
+					'%sveltekit.head%',
+					`%sveltekit.head%
+					<meta http-equiv="X-Content-Type-Options" content="nosniff">
+					<meta http-equiv="X-Frame-Options" content="DENY">
+					<meta http-equiv="X-XSS-Protection" content="1; mode=block">
+					<meta name="referrer" content="strict-origin-when-cross-origin">`
+				);
 			}
 		});
-		
-		// Apply comprehensive security headers
-		const url = new URL(event.request.url);
-		const path = url.pathname;
-		
-		// Check for HTTPS and redirect if needed (production only)
-		if (!dev && !url.protocol.includes('https')) {
-			return new Response(null, {
-				status: 301,
-				headers: {
-					'Location': url.toString().replace('http://', 'https://'),
-					'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload'
-				}
-			});
-		}
 		
 		// Determine page context for appropriate headers
 		let pageType: 'admin' | 'api' | 'auth' | 'public' | 'static' = 'public';

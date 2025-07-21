@@ -1,8 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
-	import { scheduleEvents, eventItems, user } from '$lib/stores.js';
-	import { addEventItem, fetchEventItems, fetchScheduleEvents } from '$lib/api.js';
-	import { isDuplicateItem, formatDate, formatTime } from '$lib/utils.js';
+	import { scheduleEvents, eventItems, user } from '$lib/stores.ts';
+	import { addEventItem, fetchEventItems, fetchScheduleEvents } from '$lib/api.ts';
+	import { isDuplicateItem, formatDate, formatTime } from '$lib/utils.ts';
 	import { Calendar, Clock, MapPin, Plus, AlertCircle, Package, Trash2, User } from 'lucide-svelte';
 
 	let selectedEventId = '';

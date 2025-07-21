@@ -1,5 +1,12 @@
-// Centralized mock data for development mode
-export const mockClubMembers = [
+/**
+ * Centralized mock data for development mode
+ * TypeScript version with proper type definitions
+ */
+
+import type { ClubMember, ScheduleEvent, EventItem, MeetingAvailability, Club } from './stores.ts';
+
+// Mock club members data
+export const mockClubMembers: ClubMember[] = [
 	{
 		id: '1',
 		name: 'John Doe',
@@ -52,13 +59,15 @@ export const mockClubMembers = [
 	}
 ];
 
-export const mockScheduleEvents = [
+// Mock schedule events data
+export const mockScheduleEvents: (ScheduleEvent & { book?: string; attendees: string[] })[] = [
 	{
 		id: 'event-1',
 		title: 'Monthly Book Discussion',
 		date: '2025-07-25',
 		time: '19:00',
 		location: 'Central Library - Meeting Room A',
+		type: 'discussion',
 		book: 'The Seven Husbands of Evelyn Hugo',
 		description: 'Our monthly discussion of this captivating novel about a reclusive Hollywood icon.',
 		attendees: ['1', '2', '3', '4']
@@ -69,6 +78,7 @@ export const mockScheduleEvents = [
 		date: '2025-08-08',
 		time: '18:30',
 		location: 'Coffee Corner Café',
+		type: 'meeting',
 		book: '',
 		description: 'Choose our next book and discuss reading timeline.',
 		attendees: ['1', '2', '5']
@@ -79,13 +89,21 @@ export const mockScheduleEvents = [
 		date: '2025-08-15',
 		time: '15:00',
 		location: 'Downtown Bookstore',
+		type: 'social',
 		book: 'The Thursday Murder Club',
 		description: 'Special event with local author discussing mystery writing.',
 		attendees: ['1', '2', '3', '4', '5']
 	}
 ];
 
-export const mockEventItems = {
+// Extended EventItem interface for mock data
+interface MockEventItem extends Omit<EventItem, 'status'> {
+	status: 'assigned' | 'confirmed' | 'pending';
+	notes: string;
+}
+
+// Mock event items data
+export const mockEventItems: Record<string, MockEventItem[]> = {
 	'event-1': [
 		{
 			id: 'item-1',
@@ -150,7 +168,8 @@ export const mockEventItems = {
 	]
 };
 
-export const mockMeetingAvailability = {
+// Mock meeting availability data
+export const mockMeetingAvailability: Record<string, Record<string, 'available' | 'maybe' | 'unavailable'>> = {
 	'event-1': {
 		'1': 'available',
 		'2': 'available', 
@@ -174,12 +193,116 @@ export const mockMeetingAvailability = {
 	}
 };
 
-export const mockUserClubs = [
+// Mock user clubs data
+export const mockUserClubs: (Club & { isOwner: boolean })[] = [
 	{
 		id: 'club-1',
 		name: 'Downtown Book Club',
 		description: 'A friendly neighborhood book club meeting every Tuesday',
 		memberCount: 5,
+		createdAt: '2023-01-01',
 		isOwner: true
 	}
 ];
+
+// Mock user data for authentication
+export const mockUser = {
+	id: 'user-1',
+	name: 'John Doe',
+	email: 'john@example.com',
+	role: 'Club Lead',
+	avatar: '/default-avatar.png'
+};
+
+// Mock website builder modules
+export const mockBuilderModules = [
+	{
+		id: 'hero-1',
+		name: 'Hero Section',
+		description: 'Eye-catching header with title and call-to-action',
+		component: 'HeroModule',
+		category: 'Headers',
+		settings: {
+			title: 'Welcome to Our Book Club',
+			subtitle: 'Join passionate readers in meaningful discussions',
+			buttonText: 'Join Now',
+			backgroundImage: '/hero-bg.jpg'
+		}
+	},
+	{
+		id: 'about-1',
+		name: 'About Section',
+		description: 'Information about your book club',
+		component: 'AboutModule',
+		category: 'Content',
+		settings: {
+			title: 'About Our Club',
+			content: 'We are a diverse group of book lovers who meet monthly to discuss our latest reads.',
+			image: '/about-image.jpg'
+		}
+	},
+	{
+		id: 'events-1',
+		name: 'Upcoming Events',
+		description: 'Display upcoming book club events',
+		component: 'EventsModule',
+		category: 'Content',
+		settings: {
+			title: 'Upcoming Events',
+			showLimit: 3,
+			includeLocation: true,
+			includeDescription: true
+		}
+	}
+];
+
+// Mock chat messages
+export const mockChatMessages = [
+	{
+		id: 'msg-1',
+		message: 'Hello! How can I help you today?',
+		sender: 'support' as const,
+		timestamp: new Date().toISOString()
+	}
+];
+
+// Mock notifications
+export const mockNotifications = [
+	{
+		id: 'notif-1',
+		type: 'info' as const,
+		title: 'Welcome to BookWork!',
+		message: 'Thanks for joining our community of readers.',
+		timestamp: new Date().toISOString(),
+		read: false
+	},
+	{
+		id: 'notif-2',
+		type: 'success' as const,
+		title: 'Profile Updated',
+		message: 'Your profile information has been successfully updated.',
+		timestamp: new Date(Date.now() - 3600000).toISOString(),
+		read: true
+	}
+];
+
+// Helper function to get mock data based on environment
+export function getMockData<T>(data: T): T {
+	if (import.meta.env.MODE === 'development') {
+		return data;
+	}
+	return {} as T;
+}
+
+// Export all mock data in a single object for easy access
+export const mockData = {
+	clubMembers: mockClubMembers,
+	scheduleEvents: mockScheduleEvents,
+	eventItems: mockEventItems,
+	meetingAvailability: mockMeetingAvailability,
+	userClubs: mockUserClubs,
+	user: mockUser,
+	builderModules: mockBuilderModules,
+	chatMessages: mockChatMessages,
+	notifications: mockNotifications
+};

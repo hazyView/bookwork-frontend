@@ -1,14 +1,74 @@
-<script>
+<script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { chatOpen, chatMessages } from '$lib/stores.js';
 	import { MessageCircle, X, Send, Bot, User } from 'lucide-svelte';
+	import type { ComponentEvents } from 'svelte';
+	import { createEventDispatcher } from 'svelte';
 
-	let messageInput = '';
-	let chatModal = null;
-	let messageContainer = null;
-	let previouslyFocused = null;
+	/**
+	 * Chat message interface
+	 */
+	interface ChatMessage {
+		id: number;
+		text: string;
+		sender: 'user' | 'bot';
+		timestamp: Date;
+	}
 
-	function toggleChat() {
+	/**
+	 * ChatWidget component props interface
+	 */
+	interface ChatWidgetProps {
+		/**
+		 * Custom CSS class for the chat widget
+		 */
+		class?: string;
+		
+		/**
+		 * Initial chat messages
+		 */
+		initialMessages?: ChatMessage[];
+		
+		/**
+		 * Whether to show typing indicators
+		 */
+		showTypingIndicator?: boolean;
+		
+		/**
+		 * Maximum number of messages to keep in history
+		 */
+		maxMessages?: number;
+		
+		/**
+		 * Bot response delay in milliseconds
+		 */
+		botResponseDelay?: number;
+	}
+
+	// Component props with defaults
+	let {
+		class: className = '',
+		initialMessages = [],
+		showTypingIndicator = true,
+		maxMessages = 100,
+		botResponseDelay = 1000
+	}: ChatWidgetProps = $props();
+
+	// Event dispatcher
+	const dispatch = createEventDispatcher<{
+		messagesSent: { message: ChatMessage };
+		chatOpened: void;
+		chatClosed: void;
+		messagesCleared: void;
+	}>();
+
+	let messageInput: string = '';
+	let chatModal: HTMLDivElement | null = null;
+	let messageContainer: HTMLDivElement | null = null;
+	let previouslyFocused: HTMLElement | null = null;
+	let isTyping: boolean = false;
+
+	function toggleChat(): void {
 		if ($chatOpen) {
 			closeChat();
 		} else {
@@ -16,55 +76,80 @@
 		}
 	}
 
-	function openChat() {
-		previouslyFocused = document.activeElement;
+	function openChat(): void {
+		previouslyFocused = document.activeElement as HTMLElement;
 		chatOpen.set(true);
+		dispatch('chatOpened');
+		
 		// Focus the chat input after the modal opens
 		setTimeout(() => {
-			const input = chatModal?.querySelector('input');
+			const input = chatModal?.querySelector('input') as HTMLInputElement;
 			if (input) input.focus();
 		}, 100);
 	}
 
-	function closeChat() {
+	function closeChat(): void {
 		chatOpen.set(false);
+		dispatch('chatClosed');
+		
 		// Return focus to the previously focused element
 		if (previouslyFocused) {
 			previouslyFocused.focus();
 		}
 	}
 
-	function sendMessage() {
+	function sendMessage(): void {
 		if (!messageInput.trim()) return;
 
-		const userMessage = {
+		const userMessage: ChatMessage = {
 			id: Date.now(),
 			text: messageInput.trim(),
 			sender: 'user',
 			timestamp: new Date()
 		};
 
-		chatMessages.update(messages => [...messages, userMessage]);
+		chatMessages.update(messages => {
+			// Limit message history
+			const updatedMessages = [...messages, userMessage];
+			return updatedMessages.length > maxMessages 
+				? updatedMessages.slice(-maxMessages) 
+				: updatedMessages;
+		});
+		
+		dispatch('messagesSent', { message: userMessage });
 		messageInput = '';
+
+		// Show typing indicator
+		if (showTypingIndicator) {
+			isTyping = true;
+		}
 
 		// Simulate bot response
 		setTimeout(() => {
-			const botResponse = {
+			const botResponse: ChatMessage = {
 				id: Date.now() + 1,
 				text: getBotResponse(userMessage.text),
 				sender: 'bot',
 				timestamp: new Date()
 			};
-			chatMessages.update(messages => [...messages, botResponse]);
+			
+			chatMessages.update(messages => {
+				const updatedMessages = [...messages, botResponse];
+				return updatedMessages.length > maxMessages 
+					? updatedMessages.slice(-maxMessages) 
+					: updatedMessages;
+			});
+			
+			isTyping = false;
 			
 			// Scroll to bottom after bot response
 			if (messageContainer) {
 				messageContainer.scrollTop = messageContainer.scrollHeight;
 			}
-		}, 1000);
+		}, botResponseDelay);
 	}
 
-	function getBotResponse(userMessage) {
+	function getBotResponse(userMessage: string): string {
 		const message = userMessage.toLowerCase();
 		
 		if (message.includes('hello') || message.includes('hi')) {
@@ -94,7 +179,7 @@
 		return "Thanks for your message! I'm a demo support bot. For real assistance, please visit our Support section or contact our team directly.";
 	}
 
-	function handleKeydown(event) {
+	function handleKeydown(event: KeyboardEvent): void {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
 			sendMessage();
@@ -103,14 +188,17 @@
 		}
 	}
 
-	function handleChatKeydown(event) {
+	function handleChatKeydown(event: KeyboardEvent): void {
 		if (event.key === 'Escape') {
 			closeChat();
 		} else if (event.key === 'Tab') {
 			// Trap focus within the modal
+			if (!chatModal) return;
+			
 			const focusableElements = chatModal.querySelectorAll(
 				'button, input, textarea, select, a[href], [tabindex]:not([tabindex="-1"])'
-			);
+			) as NodeListOf<HTMLElement>;
+			
 			const firstElement = focusableElements[0];
 			const lastElement = focusableElements[focusableElements.length - 1];
 
@@ -124,30 +212,45 @@
 		}
 	}
 
-	// Initialize with welcome message
-	if ($chatMessages.length === 0) {
-		chatMessages.set([
-			{
-				id: 1,
-				text: "Welcome to BookWorm Support! I'm here to help you with any questions about using the platform. How can I assist you today?",
-				sender: 'bot',
-				timestamp: new Date()
-			}
-		]);
+	function clearMessages(): void {
+		chatMessages.set([]);
+		dispatch('messagesCleared');
 	}
 
+	// Initialize messages on mount
+	onMount(() => {
+		// Add initial messages if provided
+		if (initialMessages.length > 0) {
+			chatMessages.set(initialMessages);
+		} else if ($chatMessages.length === 0) {
+			// Add welcome message if no messages exist
+			chatMessages.set([
+				{
+					id: 1,
+					text: "Welcome to BookWorm Support! I'm here to help you with any questions about using the platform. How can I assist you today?",
+					sender: 'bot',
+					timestamp: new Date()
+				}
+			]);
+		}
+	});
+
 	// Auto-scroll to bottom when new messages arrive
-	$: if (messageContainer && $chatMessages) {
-		setTimeout(() => {
-			messageContainer.scrollTop = messageContainer.scrollHeight;
-		}, 50);
-	}
+	$effect(() => {
+		if (messageContainer && $chatMessages.length > 0) {
+			setTimeout(() => {
+				if (messageContainer) {
+					messageContainer.scrollTop = messageContainer.scrollHeight;
+				}
+			}, 50);
+		}
+	});
 </script>
 
 <!-- Chat Toggle Button -->
 {#if !$chatOpen}
 	<button 
-		class="chat-toggle" 
+		class="chat-toggle {className}" 
 		on:click={toggleChat} 
 		aria-label="Open chat support"
 		title="Open Chat Support"
@@ -160,7 +263,7 @@
 <!-- Chat Widget -->
 {#if $chatOpen}
 	<div 
-		class="chat-widget"
+		class="chat-widget {className}"
 		role="dialog"
 		aria-labelledby="chat-title"
 		aria-describedby="chat-description"
@@ -211,6 +314,21 @@
 					</div>
 				</div>
 			{/each}
+			
+			{#if isTyping && showTypingIndicator}
+				<div class="message bot-message typing-indicator">
+					<div class="message-avatar">
+						<Bot size={16} />
+					</div>
+					<div class="message-content">
+						<div class="typing-animation">
+							<span></span>
+							<span></span>
+							<span></span>
+						</div>
+					</div>
+				</div>
+			{/if}
 		</div>
 
 		<div class="chat-input-container">
@@ -489,5 +607,44 @@
 		clip: rect(0, 0, 0, 0);
 		white-space: nowrap;
 		border: 0;
+	}
+
+	/* Typing indicator animation */
+	.typing-indicator .message-content {
+		padding: 0.5rem 0.75rem;
+	}
+
+	.typing-animation {
+		display: flex;
+		gap: 0.25rem;
+		align-items: center;
+		height: 1rem;
+	}
+
+	.typing-animation span {
+		width: 0.5rem;
+		height: 0.5rem;
+		background: #9ca3af;
+		border-radius: 50%;
+		animation: typing-bounce 1.4s infinite ease-in-out both;
+	}
+
+	.typing-animation span:nth-child(1) {
+		animation-delay: -0.32s;
+	}
+
+	.typing-animation span:nth-child(2) {
+		animation-delay: -0.16s;
+	}
+
+	@keyframes typing-bounce {
+		0%, 80%, 100% {
+			transform: scale(0.8);
+			opacity: 0.5;
+		}
+		40% {
+			transform: scale(1);
+			opacity: 1;
+		}
 	}
 </style>

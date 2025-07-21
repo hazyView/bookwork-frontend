@@ -4,15 +4,15 @@
 	import { currentClub } from '$lib/stores.js';
 	import { mockUserClubs } from '$lib/mockData.js';
 	import Navigation from '$lib/components/Navigation.svelte';
-	import ChatWidget from '$lib/components/ChatWidget.svelte';
 	import ErrorBoundary from '$lib/components/ErrorBoundary.svelte';
 	import '../app.css';
 
 	let loading = true;
+	let ChatWidgetComponent = null;
+	let chatWidgetLoading = true;
 
 	onMount(async () => {
-		// Authentication is handled automatically by the auth service
-		// Check if user is authenticated and set up clubs
+		// Authentication check - user must authenticate manually
 		const unsubscribe = user.subscribe((userData) => {
 			if (userData && mockUserClubs.length > 0) {
 				currentClub.set(mockUserClubs[0]);
@@ -21,20 +21,26 @@
 			}
 		});
 
-		// For development, auto-login with demo credentials if not authenticated
-		if (import.meta.env.MODE === 'development') {
-			const checkAuth = async () => {
-				const isValid = await AuthService.validateToken();
-				if (!isValid) {
-					// Auto-login with demo credentials
-					await AuthService.login('demo@bookwork.com', 'demo-password');
-				}
-			};
-			
-			await checkAuth();
+		// Validate existing authentication token if present
+		const isValid = await AuthService.validateToken();
+		if (!isValid) {
+			// Clear any invalid session data
+			await AuthService.logout();
 		}
 
 		loading = false;
+
+		// Lazy load ChatWidget after main app loads
+		setTimeout(async () => {
+			try {
+				const module = await import('$lib/components/ChatWidget.svelte');
+				ChatWidgetComponent = module.default;
+			} catch (error) {
+				console.warn('Failed to load ChatWidget:', error);
+			} finally {
+				chatWidgetLoading = false;
+			}
+		}, 100);
 
 		// Cleanup function
 		return () => {
@@ -76,9 +82,19 @@
 		<div class="app">
 			<Navigation on:logout={handleLogout} />
 			<main class="main-content">
-				<slot />
+				<ErrorBoundary errorId="main-content">
+					<slot />
+				</ErrorBoundary>
 			</main>
-			<ChatWidget />
+			<ErrorBoundary errorId="chat-widget">
+				{#if !chatWidgetLoading && ChatWidgetComponent}
+					<svelte:component this={ChatWidgetComponent} />
+				{:else if chatWidgetLoading}
+					<div class="chat-placeholder">
+						<div class="chat-loading">💬</div>
+					</div>
+				{/if}
+			</ErrorBoundary>
 		</div>
 	{/if}
 </ErrorBoundary>
@@ -147,6 +163,40 @@
 	@media (max-width: 768px) {
 		.auth-container h1 {
 			font-size: 2rem;
+		}
+	}
+
+	/* Chat placeholder styles */
+	.chat-placeholder {
+		position: fixed;
+		bottom: 20px;
+		right: 20px;
+		z-index: 1000;
+	}
+
+	.chat-loading {
+		width: 56px;
+		height: 56px;
+		background: var(--primary-color);
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 20px;
+		animation: pulse 2s ease-in-out infinite;
+		cursor: pointer;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	}
+
+	@keyframes pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.7; }
+	}
+
+	@media (max-width: 640px) {
+		.chat-placeholder {
+			bottom: 16px;
+			right: 16px;
 		}
 	}
 </style>

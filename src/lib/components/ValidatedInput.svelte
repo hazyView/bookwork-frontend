@@ -1,49 +1,180 @@
-<script>
+<script lang="ts">
 	import { sanitizeHTML } from '$lib/validation.js';
+	import { createEventDispatcher } from 'svelte';
 
-	export let type = 'text';
-	export let value = '';
-	export let placeholder = '';
-	export let label = '';
-	export let error = '';
-	export let required = false;
-	export let disabled = false;
-	export let maxlength = undefined;
-	export let minlength = undefined;
-	export let pattern = undefined;
-	export let autocomplete = undefined;
-	export let id = undefined;
-	export let name = undefined;
+	/**
+	 * Select option interface
+	 */
+	interface SelectOption {
+		value: string | number;
+		label: string;
+		disabled?: boolean;
+	}
 
-	// For textarea
-	export let rows = undefined;
-	export let cols = undefined;
-
-	// For select
-	export let options = [];
-
-	let inputElement;
-	let touched = false;
-
-	function handleInput(event) {
-		touched = true;
-		let newValue = event.target.value;
+	/**
+	 * ValidatedInput component props interface
+	 */
+	interface ValidatedInputProps {
+		/**
+		 * Input type
+		 */
+		type?: 'text' | 'email' | 'password' | 'number' | 'tel' | 'url' | 'search' | 'textarea' | 'select';
 		
-		// Sanitize input for security
-		if (type === 'text' || type === 'textarea') {
-			newValue = sanitizeHTML(newValue);
+		/**
+		 * Input value
+		 */
+		value?: string | number;
+		
+		/**
+		 * Placeholder text
+		 */
+		placeholder?: string;
+		
+		/**
+		 * Field label
+		 */
+		label?: string;
+		
+		/**
+		 * Error message
+		 */
+		error?: string | string[];
+		
+		/**
+		 * Whether field is required
+		 */
+		required?: boolean;
+		
+		/**
+		 * Whether field is disabled
+		 */
+		disabled?: boolean;
+		
+		/**
+		 * Maximum length
+		 */
+		maxlength?: number;
+		
+		/**
+		 * Minimum length
+		 */
+		minlength?: number;
+		
+		/**
+		 * Pattern for validation
+		 */
+		pattern?: string;
+		
+		/**
+		 * Autocomplete attribute
+		 */
+		autocomplete?: string;
+		
+		/**
+		 * Input ID
+		 */
+		id?: string;
+		
+		/**
+		 * Input name
+		 */
+		name?: string;
+		
+		/**
+		 * Textarea rows
+		 */
+		rows?: number;
+		
+		/**
+		 * Textarea columns
+		 */
+		cols?: number;
+		
+		/**
+		 * Select options
+		 */
+		options?: SelectOption[];
+		
+		/**
+		 * Custom CSS class
+		 */
+		class?: string;
+		
+		/**
+		 * Whether to sanitize input
+		 */
+		sanitize?: boolean;
+	}
+
+	// Component props with defaults
+	let {
+		type = 'text',
+		value = $bindable(''),
+		placeholder = '',
+		label = '',
+		error = '',
+		required = false,
+		disabled = false,
+		maxlength = undefined,
+		minlength = undefined,
+		pattern = undefined,
+		autocomplete = undefined,
+		id = undefined,
+		name = undefined,
+		rows = undefined,
+		cols = undefined,
+		options = [],
+		class: className = '',
+		sanitize = true
+	}: ValidatedInputProps = $props();
+
+	// Event dispatcher
+	const dispatch = createEventDispatcher<{
+		input: { value: string | number };
+		blur: { value: string | number };
+		focus: { value: string | number };
+	}>();
+
+	let inputElement: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null = null;
+	let touched: boolean = $state(false);
+
+	function handleInput(event: Event): void {
+		touched = true;
+		const target = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+		let newValue: string | number = target.value;
+		
+		// Sanitize input for security if enabled
+		if (sanitize && (type === 'text' || type === 'textarea' || type === 'search')) {
+			newValue = sanitizeHTML(String(newValue));
+		}
+		
+		// Convert to number for number inputs
+		if (type === 'number' && newValue !== '') {
+			const numValue = Number(newValue);
+			if (!isNaN(numValue)) {
+				newValue = numValue;
+			}
 		}
 		
 		value = newValue;
+		dispatch('input', { value: newValue });
 	}
 
-	function handleBlur() {
+	function handleBlur(event: Event): void {
 		touched = true;
+		const target = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+		dispatch('blur', { value: target.value });
+	}
+
+	function handleFocus(event: Event): void {
+		const target = event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+		dispatch('focus', { value: target.value });
 	}
 
 	// Determine input class based on validation state
-	$: inputClass = `form-input ${error && touched ? 'error' : ''} ${disabled ? 'disabled' : ''}`;
+	$: inputClass = `form-input ${className} ${(error && touched) ? 'error' : ''} ${disabled ? 'disabled' : ''}`;
 	$: showError = error && touched;
+	$: errorMessage = Array.isArray(error) ? error.join(', ') : error;
 </script>
 
 <div class="form-field">
@@ -70,9 +201,10 @@
 			{cols}
 			{autocomplete}
 			class={inputClass}
-			{value}
+			bind:value
 			on:input={handleInput}
 			on:blur={handleBlur}
+			on:focus={handleFocus}
 		></textarea>
 	{:else if type === 'select'}
 		<select
@@ -82,12 +214,19 @@
 			{required}
 			{disabled}
 			class={inputClass}
-			{value}
+			bind:value
 			on:change={handleInput}
 			on:blur={handleBlur}
+			on:focus={handleFocus}
 		>
+			<option value="" disabled={required}>
+				{placeholder || 'Select an option...'}
+			</option>
 			{#each options as option}
-				<option value={option.value} selected={option.value === value}>
+				<option 
+					value={option.value} 
+					disabled={option.disabled}
+				>
 					{option.label}
 				</option>
 			{/each}
@@ -106,15 +245,16 @@
 			{pattern}
 			{autocomplete}
 			class={inputClass}
-			{value}
+			bind:value
 			on:input={handleInput}
 			on:blur={handleBlur}
+			on:focus={handleFocus}
 		/>
 	{/if}
 
 	{#if showError}
-		<div class="error-message" role="alert">
-			{error}
+		<div class="error-message" role="alert" aria-live="polite">
+			{errorMessage}
 		</div>
 	{/if}
 </div>

@@ -1,11 +1,53 @@
-<script>
+<script lang="ts">
 	import { page } from '$app/stores';
 	import { user, isAuthenticated, chatOpen } from '$lib/stores.js';
 	import { Menu, X, BookOpen, MessageCircle } from 'lucide-svelte';
+	import { createEventDispatcher } from 'svelte';
 
-	let mobileMenuOpen = false;
+	/**
+	 * Navigation component props interface
+	 */
+	interface NavigationItem {
+		name: string;
+		href: string;
+		public: boolean;
+		children?: NavigationItem[];
+	}
 
-	const navigation = [
+	interface NavigationProps {
+		/**
+		 * Custom CSS class for the navigation container
+		 */
+		class?: string;
+		
+		/**
+		 * Whether to show the mobile menu by default
+		 */
+		mobileMenuOpen?: boolean;
+		
+		/**
+		 * Custom navigation items (overrides default)
+		 */
+		customNavigation?: NavigationItem[];
+	}
+
+	// Component props with defaults
+	let {
+		class: className = '',
+		mobileMenuOpen = false,
+		customNavigation = undefined
+	}: NavigationProps = $props();
+
+	// Event dispatcher for parent component communication
+	const dispatch = createEventDispatcher<{
+		logout: void;
+		menuToggle: { open: boolean };
+		navigationClick: { href: string; name: string };
+	}>();
+
+	let mobileMenuOpenState = $state(mobileMenuOpen);
+
+	const navigation: NavigationItem[] = customNavigation || [
 		{ name: 'Home', href: '/', public: true },
 		{ name: 'For Clubs', href: '/clubs', public: false, children: [
 			{ name: 'Club Roster', href: '/clubs/roster' },
@@ -24,20 +66,31 @@
 		{ name: 'Blog', href: '/blog', public: true }
 	];
 
-	function toggleMobileMenu() {
-		mobileMenuOpen = !mobileMenuOpen;
+	function toggleMobileMenu(): void {
+		mobileMenuOpenState = !mobileMenuOpenState;
+		dispatch('menuToggle', { open: mobileMenuOpenState });
 	}
 
-	function closeMobileMenu() {
-		mobileMenuOpen = false;
+	function closeMobileMenu(): void {
+		mobileMenuOpenState = false;
+		dispatch('menuToggle', { open: false });
 	}
 
-	function toggleChat() {
+	function toggleChat(): void {
 		chatOpen.update(n => !n);
 	}
-</script>
 
-<nav class="navigation">
+	function handleNavigationClick(item: NavigationItem): void {
+		dispatch('navigationClick', { href: item.href, name: item.name });
+		closeMobileMenu();
+	}
+
+	function handleLogout(): void {
+		dispatch('logout');
+		closeMobileMenu();
+	}</script>
+
+<nav class="navigation {className}">
 	<div class="nav-container">
 		<div class="nav-brand">
 			<a href="/" class="brand-link">
@@ -74,7 +127,7 @@
 
 		<!-- Mobile menu button -->
 		<button class="mobile-menu-btn" on:click={toggleMobileMenu}>
-			{#if mobileMenuOpen}
+			{#if mobileMenuOpenState}
 				<X size={24} />
 			{:else}
 				<Menu size={24} />
@@ -88,14 +141,14 @@
 	</div>
 
 	<!-- Mobile Navigation -->
-	{#if mobileMenuOpen}
+	{#if mobileMenuOpenState}
 		<div class="mobile-menu">
 			{#each navigation as item}
 				{#if item.public || $isAuthenticated}
 					<a 
 						href={item.href} 
 						class="mobile-nav-item"
-						on:click={closeMobileMenu}
+						on:click={() => handleNavigationClick(item)}
 					>
 						{item.name}
 					</a>
@@ -104,7 +157,7 @@
 							<a 
 								href={child.href} 
 								class="mobile-nav-subitem"
-								on:click={closeMobileMenu}
+								on:click={() => handleNavigationClick(child)}
 							>
 								{child.name}
 							</a>
@@ -112,6 +165,14 @@
 					{/if}
 				{/if}
 			{/each}
+			{#if $isAuthenticated}
+				<button 
+					class="mobile-nav-item logout-btn"
+					on:click={handleLogout}
+				>
+					Logout
+				</button>
+			{/if}
 		</div>
 	{/if}
 </nav>
@@ -274,6 +335,21 @@
 	.mobile-nav-subitem:hover {
 		color: #3b82f6;
 		text-decoration: none;
+	}
+
+	.logout-btn {
+		background: none;
+		border: none;
+		width: 100%;
+		text-align: left;
+		cursor: pointer;
+		font-family: inherit;
+		font-size: inherit;
+	}
+
+	.logout-btn:hover {
+		background-color: #fee2e2;
+		color: #dc2626;
 	}
 
 	@media (min-width: 768px) {
