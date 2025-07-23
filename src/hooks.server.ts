@@ -1,10 +1,11 @@
 import type { Handle } from '@sveltejs/kit';
-import { generateNonce, applySecurityHeaders } from '$lib/security';
+import { applySecurityHeaders, validateSvelteKitCSP, validateCSPForAPI } from '$lib/security';
 import { createRateLimitMiddleware } from '$lib/rateLimit';
 import { generateSecurityHeaders, configureCORS } from '$lib/httpHeaders';
 import { detectMixedContent, fixMixedContent } from '$lib/httpsEnforcement';
 import { createSessionMiddleware } from '$lib/sessionManager';
 import type { SessionData } from '$lib/sessionManager';
+import { getApiConfig } from '$lib/env';
 import { dev } from '$app/environment';
 
 // Create rate limiting middleware
@@ -20,12 +21,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// Apply rate limiting to all requests
 	const rateLimitResponse = await rateLimitMiddleware(event, async () => {
-		// Generate nonce for CSP
-		const nonce = generateNonce();
-		
-		// Make nonce available to the app
-		event.locals.nonce = nonce;
-		
 		// Validate session for this request
 		const sessionData = await sessionMiddleware.validateRequest(event.request);
 		if (sessionData) {
@@ -51,28 +46,27 @@ export const handle: Handle = async ({ event, resolve }) => {
 		// Resolve the response with security transformations
 		const response = await resolve(event, {
 			transformPageChunk: ({ html }) => {
-				// In production, replace style blocks with nonce and fix mixed content
+				// Check and fix mixed content in production
 				if (!dev) {
-					let processedHtml = html.replace(/<style>/g, `<style nonce="${nonce}">`);
-					
-					// Check and fix mixed content
-					const mixedContent = detectMixedContent(processedHtml);
+					const mixedContent = detectMixedContent(html);
 					if (mixedContent.hasIssues) {
-						processedHtml = fixMixedContent(processedHtml);
+						return fixMixedContent(html);
 					}
-					
-					return processedHtml;
 				}
 				
 				// In development, add security meta tags
-				return html.replace(
-					'%sveltekit.head%',
-					`%sveltekit.head%
+				if (dev) {
+					return html.replace(
+						'%sveltekit.head%',
+						`%sveltekit.head%
 					<meta http-equiv="X-Content-Type-Options" content="nosniff">
 					<meta http-equiv="X-Frame-Options" content="DENY">
 					<meta http-equiv="X-XSS-Protection" content="1; mode=block">
 					<meta name="referrer" content="strict-origin-when-cross-origin">`
-				);
+					);
+				}
+				
+				return html;
 			}
 		});
 		
@@ -83,19 +77,49 @@ export const handle: Handle = async ({ event, resolve }) => {
 		else if (path.includes('login') || path.includes('register') || path.includes('auth')) pageType = 'auth';
 		else if (path.startsWith('/_app/') || path.includes('.js') || path.includes('.css')) pageType = 'static';
 		
-		// Apply base security headers with nonce
-		applySecurityHeaders(response.headers, nonce);
+		// Apply base security headers (includes CSP with 'unsafe-inline' for SvelteKit compatibility)
+		applySecurityHeaders(response.headers);
 		
-		// Apply additional security headers based on context
+		// Apply additional security headers based on context (excluding CSP to prevent conflicts)
 		const additionalHeaders = generateSecurityHeaders({
 			path,
 			pageType,
 			isLogout: path.includes('logout')
 		});
 		
+		// Apply additional headers but skip CSP to avoid overriding the correct one
 		additionalHeaders.forEach((value, key) => {
-			response.headers.set(key, value);
+			// Skip Content-Security-Policy to prevent conflict with the one set by applySecurityHeaders
+			if (key.toLowerCase() !== 'content-security-policy') {
+				response.headers.set(key, value);
+			}
 		});
+		
+		// Validate CSP in development for debugging
+		if (dev) {
+			const cspValidation = validateSvelteKitCSP(response.headers);
+			if (!cspValidation.isValid) {
+				console.warn('[CSP VALIDATION] Issues detected:', cspValidation.issues);
+				console.warn('[CSP VALIDATION] Has unsafe-inline:', cspValidation.hasUnsafeInline);
+				console.warn('[CSP VALIDATION] Has nonces:', cspValidation.hasNonces);
+			} else {
+				console.log('[CSP VALIDATION] ✅ CSP is correctly configured for SvelteKit');
+			}
+
+			// Validate CSP allows API communication
+			const apiConfig = getApiConfig();
+			const wsBaseUrl = process.env.VITE_WS_BASE || 'ws://localhost:8000/ws';
+			const currentCSP = response.headers.get('content-security-policy') || '';
+			const cspAllowsAPI = validateCSPForAPI(currentCSP, apiConfig.baseUrl, wsBaseUrl);
+			if (!cspAllowsAPI) {
+				console.error('[CSP VALIDATION] ❌ CSP blocks API communication!');
+				console.error('[CSP VALIDATION] API Base:', apiConfig.baseUrl);
+				console.error('[CSP VALIDATION] WS Base:', wsBaseUrl);
+				console.error('[CSP VALIDATION] Current CSP:', currentCSP);
+			} else {
+				console.log('[CSP VALIDATION] ✅ CSP allows API communication');
+			}
+		}
 		
 		// Apply HTTPS security headers in production
 		if (!dev) {

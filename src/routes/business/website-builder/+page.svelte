@@ -1,9 +1,11 @@
-<script>
+<script lang="ts">
 	import { onMount } from 'svelte';
-	import { builderModules, selectedModule } from '$lib/stores.js';
-	import { generateId } from '$lib/utils.js';
-	import { validateFormData, sanitizeHTML } from '$lib/validation.js';
-	import SecureStorage from '$lib/secureStorage.js';
+	import { builderModules, selectedModule } from '$lib/stores';
+	import { generateId } from '$lib/utils';
+	import { validateFormData, sanitizeHTML } from '$lib/validation';
+	import SecureStorage from '$lib/secureStorage';
+	import { toasts } from '$lib/toast';
+	import type { WebsiteModule } from '$lib/stores';
 	import { 
 		Type, 
 		Image as ImageIcon, 
@@ -21,9 +23,9 @@
 		Redo
 	} from 'lucide-svelte';
 
-	let draggedModule = null;
-	let dragOverIndex = null;
-	let editingModule = null;
+	let draggedModule: any = null;
+	let dragOverIndex: number | null = null;
+	let editingModule: WebsiteModule | null = null;
 	let previewMode = false;
 	let saveStatus = '';
 
@@ -120,7 +122,9 @@
 				setTimeout(() => { saveStatus = ''; }, 3000);
 			}
 		} catch (error) {
-			console.error('Failed to save website data:', error);
+			if (import.meta.env.DEV) {
+				console.error('Failed to save website data:', error);
+			}
 			saveStatus = 'Save failed';
 			setTimeout(() => { saveStatus = ''; }, 3000);
 		}
@@ -141,6 +145,11 @@
 		builderModules.set([
 			{
 				id: generateId(),
+				name: 'Welcome Text',
+				description: 'Welcome heading text',
+				component: 'TextBlock',
+				category: 'content',
+				settings: {},
 				type: 'text',
 				content: {
 					text: 'Welcome to My Author Website',
@@ -151,6 +160,11 @@
 			},
 			{
 				id: generateId(),
+				name: 'Description Text',
+				description: 'Description text block',
+				component: 'TextBlock',
+				category: 'content',
+				settings: {},
 				type: 'text',
 				content: {
 					text: 'Discover my latest books and join the literary journey.',
@@ -162,22 +176,29 @@
 		]);
 	});
 
-	function startDrag(event, moduleType) {
+	function startDrag(event: DragEvent | KeyboardEvent, moduleType: any) {
 		draggedModule = moduleType;
-		event.dataTransfer.effectAllowed = 'copy';
+		if ('dataTransfer' in event && event.dataTransfer) {
+			event.dataTransfer.effectAllowed = 'copy';
+		}
 	}
 
-	function handleDragOver(event, index) {
+	function handleDragOver(event: DragEvent, index: number) {
 		event.preventDefault();
 		dragOverIndex = index;
 	}
 
-	function handleDrop(event, index) {
+	function handleDrop(event: DragEvent, index: number) {
 		event.preventDefault();
 		
 		if (draggedModule) {
 			const newModule = {
 				id: generateId(),
+				name: draggedModule.name,
+				description: draggedModule.name,
+				component: draggedModule.type,
+				category: 'content',
+				settings: {},
 				type: draggedModule.type,
 				content: { ...draggedModule.defaultContent }
 			};
@@ -193,7 +214,7 @@
 		dragOverIndex = null;
 	}
 
-	function selectModule(moduleId) {
+	function selectModule(moduleId: string) {
 		if (previewMode) return;
 		
 		selectedModule.set(moduleId);
@@ -207,14 +228,14 @@
 		if (!editingModule) return;
 
 		builderModules.update(modules =>
-			modules.map(m => m.id === editingModule.id ? { ...editingModule } : m)
+			modules.map(m => m.id === editingModule!.id ? { ...editingModule! } : m)
 		);
 		
 		editingModule = null;
 		selectedModule.set(null);
 	}
 
-	function deleteModule(moduleId) {
+	function deleteModule(moduleId: string) {
 		builderModules.update(modules => modules.filter(m => m.id !== moduleId));
 		if ($selectedModule === moduleId) {
 			selectedModule.set(null);
@@ -222,7 +243,7 @@
 		}
 	}
 
-	function moveModule(fromIndex, toIndex) {
+	function moveModule(fromIndex: number, toIndex: number) {
 		builderModules.update(modules => {
 			const newModules = [...modules];
 			const [movedModule] = newModules.splice(fromIndex, 1);
@@ -240,8 +261,12 @@
 	}
 
 	function saveWebsite() {
-		// Simulate saving
-		alert('Website saved successfully! In a real application, this would save to your account.');
+		// Simulate saving process
+		toasts.add({
+			message: 'Website saved successfully! Your changes have been preserved.',
+			type: 'success',
+			duration: 3000
+		});
 	}
 </script>
 

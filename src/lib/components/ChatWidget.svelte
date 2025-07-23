@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { chatOpen, chatMessages } from '$lib/stores.js';
+	import { chatOpen, chatMessages } from '$lib/stores';
 	import { MessageCircle, X, Send, Bot, User } from 'lucide-svelte';
 	import type { ComponentEvents } from 'svelte';
 	import { createEventDispatcher } from 'svelte';

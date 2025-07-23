@@ -288,7 +288,8 @@ export const mockNotifications = [
 
 // Helper function to get mock data based on environment
 export function getMockData<T>(data: T): T {
-	if (import.meta.env.MODE === 'development') {
+	// Use safe environment detection that works with both Vite and standard TypeScript
+	if (import.meta.env?.MODE === 'development' || process.env.NODE_ENV === 'development') {
 		return data;
 	}
 	return {} as T;

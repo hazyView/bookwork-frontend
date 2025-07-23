@@ -334,18 +334,18 @@ class SessionManager {
 export const sessionManager = new SessionManager();
 
 /**
- * Session middleware for SvelteKit
+ * Session middleware for SvelteKit with backend integration
  */
 export function createSessionMiddleware(config?: Partial<SessionConfig>) {
 	const manager = new SessionManager(config);
 
 	return {
 		/**
-		 * Validate session from request
+		 * Validate session from request using backend API token validation
 		 */
 		async validateRequest(request: Request): Promise<SessionData | null> {
-			const sessionId = this.extractSessionId(request);
-			if (!sessionId) return null;
+			const token = this.extractTokenFromRequest(request);
+			if (!token) return null;
 
 			const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0] || 
 						   request.headers.get('x-real-ip') || 
@@ -353,10 +353,49 @@ export function createSessionMiddleware(config?: Partial<SessionConfig>) {
 			
 			const userAgent = request.headers.get('user-agent');
 
-			return manager.validateSession(sessionId, {
-				ipAddress: clientIP || undefined,
-				userAgent: userAgent || undefined
-			});
+			try {
+				// Validate token with backend API
+				const { validateAuthToken } = await import('./api');
+				const user = await validateAuthToken(token);
+				
+				// Create or update session data based on validated user
+				const sessionData: SessionData = {
+					id: token, // Use token as session ID for simplicity
+					userId: user.id,
+					createdAt: new Date(user.createdAt),
+					lastActivity: new Date(),
+					expiresAt: new Date(Date.now() + (config?.maxAge || 4 * 60 * 60 * 1000)), // 4 hours default
+					ipAddress: clientIP || undefined,
+					userAgent: userAgent || undefined,
+					isActive: user.isActive,
+					metadata: { user }
+				};
+
+				return sessionData;
+			} catch (error) {
+				// Token validation failed
+				return null;
+			}
+		},
+
+		/**
+		 * Extract token from request headers
+		 */
+		extractTokenFromRequest(request: Request): string | null {
+			const authHeader = request.headers.get('authorization');
+			if (authHeader?.startsWith('Bearer ')) {
+				return authHeader.substring(7);
+			}
+			
+			// Also check for token in cookies
+			const cookies = request.headers.get('cookie');
+			if (!cookies) return null;
+
+			const tokenCookie = cookies
+				.split(';')
+				.find(c => c.trim().startsWith('authToken='));
+
+			return tokenCookie ? tokenCookie.split('=')[1] : null;
 		},
 
 		/**

@@ -1,104 +1,70 @@
 /**
- * Environment Variable Validation
- * Validates all required environment variables at application startup
- * Uses Zod for runtime validation to ensure fail-fast behavior
+ * Environment Variable Access
+ * Simplified SSR-safe environment variable access
+ * No validation to avoid SSR issues
  */
-
-import { z } from 'zod';
-import { dev } from '$app/environment';
 
 /**
- * Environment variable schema definition
- * All required environment variables for the application
+ * Check if we're in development mode (SSR-safe)
  */
-const envSchema = z.object({
-	// Application Configuration
-	NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-	PORT: z.string().regex(/^\d+$/, 'PORT must be a valid port number').default('3000'),
-	
-	// API Configuration
-	VITE_API_BASE: z.string().url('VITE_API_BASE must be a valid URL').optional(),
-	
-	// Authentication Configuration (required in production)
-	VITE_JWT_SECRET: dev ? z.string().optional() : z.string().min(32, 'JWT secret must be at least 32 characters in production'),
-	
-	// Security Configuration
-	VITE_RATE_LIMIT_MAX: z.string().regex(/^\d+$/, 'Rate limit max must be a number').default('100'),
-	VITE_RATE_LIMIT_WINDOW: z.string().regex(/^\d+$/, 'Rate limit window must be a number').default('60000'),
-	
-	// External Service Configuration (optional)
-	VITE_ANALYTICS_ID: z.string().optional(),
-	VITE_SENTRY_DSN: z.string().url('Sentry DSN must be a valid URL').optional(),
-	
-	// Development Configuration (only in dev)
-	VITE_DEV_TOOLS: dev ? z.string().optional() : z.undefined(),
-	
-	// Database Configuration (for future backend integration)
-	DATABASE_URL: z.string().url('Database URL must be a valid connection string').optional(),
-	
-	// Session Configuration
-	VITE_SESSION_SECRET: dev ? z.string().optional() : z.string().min(32, 'Session secret must be at least 32 characters in production'),
-	
-	// CORS Configuration
-	VITE_ALLOWED_ORIGINS: z.string().optional(),
-});
-
-/**
- * Parsed and validated environment variables
- */
-export type Environment = z.infer<typeof envSchema>;
-
-/**
- * Validate environment variables
- * @returns Validated environment configuration
- * @throws Error if validation fails
- */
-function validateEnvironment(): Environment {
-	try {
-		// Get all environment variables
-		const env = {
-			NODE_ENV: process.env.NODE_ENV,
-			PORT: process.env.PORT,
-			VITE_API_BASE: import.meta.env.VITE_API_BASE,
-			VITE_JWT_SECRET: import.meta.env.VITE_JWT_SECRET,
-			VITE_RATE_LIMIT_MAX: import.meta.env.VITE_RATE_LIMIT_MAX,
-			VITE_RATE_LIMIT_WINDOW: import.meta.env.VITE_RATE_LIMIT_WINDOW,
-			VITE_ANALYTICS_ID: import.meta.env.VITE_ANALYTICS_ID,
-			VITE_SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN,
-			VITE_DEV_TOOLS: import.meta.env.VITE_DEV_TOOLS,
-			DATABASE_URL: process.env.DATABASE_URL,
-			VITE_SESSION_SECRET: import.meta.env.VITE_SESSION_SECRET,
-			VITE_ALLOWED_ORIGINS: import.meta.env.VITE_ALLOWED_ORIGINS,
-		};
-
-		// Validate against schema
-		const validatedEnv = envSchema.parse(env);
-		
-		// Log successful validation
-		console.info(`[ENV] Environment validation successful (${validatedEnv.NODE_ENV} mode)`);
-		
-		return validatedEnv;
-	} catch (error) {
-		if (error instanceof z.ZodError) {
-			const errorMessages = error.issues.map((err: z.ZodIssue) => 
-				`${err.path.join('.')}: ${err.message}`
-			).join('\n');
-			
-			console.error('[ENV] Environment validation failed:');
-			console.error(errorMessages);
-			
-			throw new Error(`Environment validation failed:\n${errorMessages}`);
-		}
-		
-		throw error;
-	}
+function isDev(): boolean {
+	// Use import.meta.env.MODE instead of $app/environment to avoid SSR issues
+	return import.meta.env.MODE === 'development' || import.meta.env.DEV === true;
 }
 
 /**
- * Validated environment configuration
- * This will throw an error at module load time if validation fails
+ * Environment configuration type
  */
-export const env = validateEnvironment();
+export interface Environment {
+	VITE_API_BASE: string;
+	VITE_API_TIMEOUT: string;
+	VITE_ENABLE_MOCK_DATA: boolean;
+	VITE_ENABLE_DEBUG_MODE: boolean;
+	VITE_RATE_LIMIT_MAX: string;
+	VITE_RATE_LIMIT_WINDOW: string;
+	VITE_ENABLE_ANALYTICS: boolean;
+	VITE_WS_BASE?: string;
+	VITE_ALLOWED_ORIGINS?: string;
+}
+
+/**
+ * Get environment variables (SSR-safe)
+ * @returns Environment configuration with defaults
+ */
+function getEnvironment(): Environment {
+	// Direct access to avoid validation issues during SSR
+	return {
+		VITE_API_BASE: import.meta.env.VITE_API_BASE || 'http://localhost:8000/api',
+		VITE_API_TIMEOUT: import.meta.env.VITE_API_TIMEOUT || '30000',
+		VITE_ENABLE_MOCK_DATA: import.meta.env.VITE_ENABLE_MOCK_DATA === 'true',
+		VITE_ENABLE_DEBUG_MODE: import.meta.env.VITE_ENABLE_DEBUG_MODE === 'true',
+		VITE_RATE_LIMIT_MAX: import.meta.env.VITE_RATE_LIMIT_MAX || '100',
+		VITE_RATE_LIMIT_WINDOW: import.meta.env.VITE_RATE_LIMIT_WINDOW || '60000',
+		VITE_ENABLE_ANALYTICS: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
+		VITE_WS_BASE: import.meta.env.VITE_WS_BASE,
+		VITE_ALLOWED_ORIGINS: import.meta.env.VITE_ALLOWED_ORIGINS,
+	};
+}
+
+/**
+ * Cached environment configuration
+ */
+let _env: Environment | null = null;
+
+function getEnv(): Environment {
+	if (!_env) {
+		_env = getEnvironment();
+	}
+	return _env;
+}
+
+/**
+ * Force environment reload (useful for testing)
+ */
+export function forceEnvValidation(): Environment {
+	_env = getEnvironment();
+	return _env;
+}
 
 /**
  * Helper function to get typed environment values
@@ -106,40 +72,89 @@ export const env = validateEnvironment();
  * @returns Environment variable value
  */
 export function getEnvVar<K extends keyof Environment>(key: K): Environment[K] {
-	return env[key];
+	return getEnv()[key];
 }
 
 /**
- * Check if we're in development mode
+ * Check if we're in development mode  
  */
-export const isDevelopment = env.NODE_ENV === 'development';
+export function isDevelopment(): boolean {
+	return isDev();
+}
 
 /**
  * Check if we're in production mode
  */
-export const isProduction = env.NODE_ENV === 'production';
+export function isProduction(): boolean {
+	return import.meta.env.PROD === true;
+}
 
 /**
  * Check if we're in test mode
  */
-export const isTest = env.NODE_ENV === 'test';
+export function isTest(): boolean {
+	return import.meta.env.MODE === 'test';
+}
 
 /**
  * Get the application port as a number
  */
-export const appPort = parseInt(env.PORT, 10);
+export function getAppPort(): number {
+	return 5173; // Default Vite dev server port
+}
 
 /**
  * Get rate limiting configuration
  */
-export const rateLimitConfig = {
-	maxRequests: parseInt(env.VITE_RATE_LIMIT_MAX, 10),
-	windowMs: parseInt(env.VITE_RATE_LIMIT_WINDOW, 10),
-};
+export function getRateLimitConfig() {
+	const env = getEnv();
+	return {
+		maxRequests: parseInt(env.VITE_RATE_LIMIT_MAX, 10),
+		windowMs: parseInt(env.VITE_RATE_LIMIT_WINDOW, 10),
+	};
+}
+
+/**
+ * Get API configuration
+ */
+export function getApiConfig() {
+	const env = getEnv();
+	return {
+		baseUrl: env.VITE_API_BASE,
+		timeout: parseInt(env.VITE_API_TIMEOUT, 10),
+	};
+}
 
 /**
  * Get allowed origins for CORS
  */
-export const allowedOrigins = env.VITE_ALLOWED_ORIGINS 
-	? env.VITE_ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-	: [];
+export function getAllowedOrigins(): string[] {
+	const env = getEnv();
+	return env.VITE_ALLOWED_ORIGINS 
+		? env.VITE_ALLOWED_ORIGINS.split(',').map((origin: string) => origin.trim())
+		: [];
+}
+
+/**
+ * Check if mock data is enabled
+ */
+export function isMockDataEnabled(): boolean {
+	const env = getEnv();
+	return env.VITE_ENABLE_MOCK_DATA === true;
+}
+
+/**
+ * Check if debug mode is enabled
+ */
+export function isDebugModeEnabled(): boolean {
+	const env = getEnv();
+	return env.VITE_ENABLE_DEBUG_MODE === true;
+}
+
+/**
+ * Check if analytics is enabled
+ */
+export function isAnalyticsEnabled(): boolean {
+	const env = getEnv();
+	return env.VITE_ENABLE_ANALYTICS === true;
+}

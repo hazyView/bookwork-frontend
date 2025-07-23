@@ -45,20 +45,20 @@ export const additionalSecurityHeaders = {
 	// Clear-Site-Data header for logout
 	'Clear-Site-Data': '"cache", "cookies", "storage", "executionContexts"', // Use on logout
 	
-	// Feature Policy (deprecated but still supported)
-	'Feature-Policy': [
-		'camera \'none\'',
-		'microphone \'none\'',
-		'geolocation \'none\'',
-		'payment \'none\'',
-		'usb \'none\'',
-		'magnetometer \'none\'',
-		'accelerometer \'none\'',
-		'gyroscope \'none\'',
-		'fullscreen \'self\'',
-		'autoplay \'none\'',
-		'encrypted-media \'none\'',
-		'picture-in-picture \'none\''
+	// Modern Permissions Policy (replaces deprecated Feature-Policy)
+	'Permissions-Policy': [
+		'camera=()',
+		'microphone=()',
+		'geolocation=()',
+		'payment=()',
+		'usb=()',
+		'magnetometer=()',
+		'accelerometer=()',
+		'gyroscope=()',
+		'fullscreen=(self)',
+		'autoplay=()',
+		'encrypted-media=()',
+		'picture-in-picture=()'
 	].join(', ')
 };
 
@@ -132,6 +132,9 @@ export const contentTypeHeaders = {
 
 /**
  * Generate security headers based on context
+ * 
+ * IMPORTANT: This function NEVER sets Content-Security-Policy headers.
+ * CSP is exclusively managed by security.ts to prevent conflicts.
  */
 export function generateSecurityHeaders(
 	context: {
@@ -143,9 +146,10 @@ export function generateSecurityHeaders(
 ): Headers {
 	const headers = new Headers();
 	
-	// Apply base security headers
+	// Apply base security headers (excluding CSP)
 	Object.entries(additionalSecurityHeaders).forEach(([key, value]) => {
-		if (value && key !== 'Clear-Site-Data') { // Don't apply Clear-Site-Data by default
+		// Skip CSP-related headers - these are managed exclusively by security.ts
+		if (value && key !== 'Clear-Site-Data' && key.toLowerCase() !== 'content-security-policy') {
 			headers.set(key, value);
 		}
 	});

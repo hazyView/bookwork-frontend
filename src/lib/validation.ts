@@ -309,6 +309,78 @@ export function sanitizeBasicContent(content: string): string {
 }
 
 /**
+ * Zod schema for event validation
+ */
+export const eventSchema = z.object({
+	title: z.string()
+		.trim()
+		.min(1, 'Event title is required')
+		.max(100, 'Event title must be less than 100 characters')
+		.transform(title => sanitizeText(title)),
+	date: z.string()
+		.min(1, 'Event date is required')
+		.refine(dateStr => {
+			const eventDate = new Date(dateStr);
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+			return eventDate >= today;
+		}, 'Event date cannot be in the past'),
+	time: z.string()
+		.min(1, 'Event time is required')
+		.regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (use HH:MM)'),
+	location: z.string()
+		.trim()
+		.min(1, 'Event location is required')
+		.max(200, 'Location must be less than 200 characters')
+		.transform(location => sanitizeText(location)),
+	description: z.string()
+		.optional()
+		.transform(desc => desc ? sanitizeHTML(desc, 'basic') : undefined)
+});
+
+/**
+ * Validate event form data
+ * @param eventData - Event data to validate
+ * @returns Validation result
+ */
+export function validateEvent(eventData: any): ValidationResult {
+	return validateFormData(eventData, eventSchema);
+}
+
+/**
+ * Zod schema for item validation
+ */
+export const itemSchema = z.object({
+	name: z.string()
+		.trim()
+		.min(1, 'Item name is required')
+		.max(100, 'Item name must be less than 100 characters')
+		.transform(name => sanitizeText(name)),
+	bringer: z.string()
+		.trim()
+		.min(1, 'Please specify who will bring this item')
+		.max(100, 'Bringer name must be less than 100 characters')
+		.transform(bringer => sanitizeText(bringer)),
+	description: z.string()
+		.optional()
+		.transform(desc => desc ? sanitizeHTML(desc, 'basic') : undefined),
+	quantity: z.number()
+		.min(1, 'Quantity must be at least 1')
+		.max(999, 'Quantity cannot exceed 999')
+		.optional()
+		.default(1)
+});
+
+/**
+ * Validate item form data
+ * @param itemData - Item data to validate
+ * @returns Validation result
+ */
+export function validateItem(itemData: any): ValidationResult {
+	return validateFormData(itemData, itemSchema);
+}
+
+/**
  * Test known XSS attack vectors against sanitization
  * @param input - Input to test
  * @returns Test results

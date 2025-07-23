@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { 
 		BookOpen, 
 		Users, 
@@ -15,6 +15,7 @@
 		MapPin,
 		Clock
 	} from 'lucide-svelte';
+	import { toasts } from '$lib/toast';
 
 	const communityStats = [
 		{ label: 'Active Authors', value: '2,500+', icon: Users },
@@ -173,12 +174,20 @@
 		}
 	];
 
-	function joinEvent(eventId) {
-		alert('Event registration would be handled here in a real application.');
+	function joinEvent(eventId: string) {
+		toasts.add({
+			message: 'Event registration feature coming soon! We\'ll notify you when it\'s available.',
+			type: 'info',
+			duration: 4000
+		});
 	}
 
-	function downloadResource(resourceId) {
-		alert('Resource download would be handled here in a real application.');
+	function downloadResource(resourceId: number) {
+		toasts.add({
+			message: 'Resource download feature is being prepared. Check back soon!',
+			type: 'info',
+			duration: 4000
+		});
 	}
 </script>
 

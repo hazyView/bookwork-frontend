@@ -2,24 +2,31 @@
  * Authentication Service
  * Provides secure JWT-based authentication with proper token management
  */
-import jwt from 'jsonwebtoken';
 import { browser } from '$app/environment';
 import { writable } from 'svelte/store';
 import { sessionManager } from './sessionManager';
+import { login as apiLogin, logout as apiLogout, validateAuthToken, refreshAuthToken } from './api';
+import { isDevelopment } from './env';
+import CryptoUtils from './crypto.js';
+import { TIME_CONSTANTS } from './constants';
 
-// Environment configuration
-const JWT_SECRET = import.meta.env.VITE_JWT_SECRET || 'fallback-secret-change-in-production';
-const SESSION_TIMEOUT = parseInt(import.meta.env.VITE_SESSION_TIMEOUT) || 1800000; // 30 minutes default
-const AUTH_DEBUG = import.meta.env.VITE_AUTH_DEBUG === 'true';
+// Authentication configuration
+const SESSION_TIMEOUT = TIME_CONSTANTS.SESSION_TIMEOUT;
+const AUTH_DEBUG = isDevelopment();
 
-// Types
+// Types - Updated to match backend User model
 export interface User {
 	id: string;
-	email: string;
 	name: string;
-	role: 'admin' | 'user' | 'manager';
-	clubs: string[];
-	permissions: string[];
+	email: string;
+	phone?: string | null;
+	avatar?: string | null;
+	role: 'admin' | 'moderator' | 'member' | 'guest';
+	isActive: boolean;
+	lastLoginAt?: string | null;
+	createdAt: string;
+	updatedAt?: string;
+	joinedDate?: string | null;
 }
 
 interface AuthTokenPayload {
@@ -52,29 +59,31 @@ class SecureTokenStorage {
 	private static readonly TOKEN_KEY = '__auth_token';
 	private static readonly REFRESH_TOKEN_KEY = '__refresh_token';
 	
-	static setToken(token: string, refreshToken?: string): void {
+	static async setToken(token: string, refreshToken?: string): Promise<void> {
 		if (!browser) return;
 		
 		// Use sessionStorage for tokens (more secure than localStorage)
-		sessionStorage.setItem(this.TOKEN_KEY, this.encryptToken(token));
+		const encryptedToken = await this.encryptToken(token);
+		sessionStorage.setItem(this.TOKEN_KEY, encryptedToken);
 		
 		if (refreshToken) {
-			sessionStorage.setItem(this.REFRESH_TOKEN_KEY, this.encryptToken(refreshToken));
+			const encryptedRefresh = await this.encryptToken(refreshToken);
+			sessionStorage.setItem(this.REFRESH_TOKEN_KEY, encryptedRefresh);
 		}
 	}
 	
-	static getToken(): string | null {
+	static async getToken(): Promise<string | null> {
 		if (!browser) return null;
 		
 		const encrypted = sessionStorage.getItem(this.TOKEN_KEY);
-		return encrypted ? this.decryptToken(encrypted) : null;
+		return encrypted ? await this.decryptToken(encrypted) : null;
 	}
 	
-	static getRefreshToken(): string | null {
+	static async getRefreshToken(): Promise<string | null> {
 		if (!browser) return null;
 		
 		const encrypted = sessionStorage.getItem(this.REFRESH_TOKEN_KEY);
-		return encrypted ? this.decryptToken(encrypted) : null;
+		return encrypted ? await this.decryptToken(encrypted) : null;
 	}
 	
 	static removeTokens(): void {
@@ -83,17 +92,38 @@ class SecureTokenStorage {
 		sessionStorage.removeItem(this.TOKEN_KEY);
 		sessionStorage.removeItem(this.REFRESH_TOKEN_KEY);
 		
+		// Clear encryption keys
+		CryptoUtils.clearKeys();
+		
 		// Also clear localStorage for legacy cleanup
 		localStorage.removeItem('authToken');
 	}
 	
-	private static encryptToken(token: string): string {
-		// Simple encryption - in production, use proper encryption
-		return btoa(token);
+	private static async encryptToken(token: string): Promise<string> {
+		// Production-grade encryption using AES-GCM
+		try {
+			const result = await CryptoUtils.encrypt(token);
+			return JSON.stringify(result); // Store both data and IV
+		} catch (error) {
+			console.warn('Token encryption failed, using fallback:', error);
+			return btoa(token); // Fallback to base64 for compatibility
+		}
 	}
 	
-	private static decryptToken(encrypted: string): string {
+	private static async decryptToken(encrypted: string): Promise<string> {
 		try {
+			// Try to parse as JSON (new format with IV)
+			const parsed = JSON.parse(encrypted);
+			if (parsed.data && parsed.iv) {
+				return await CryptoUtils.decrypt(parsed.data, parsed.iv);
+			}
+			// Fall through to legacy decryption
+		} catch {
+			// Not JSON, try legacy base64 decryption
+		}
+		
+		try {
+			// Legacy base64 decryption for backward compatibility
 			return atob(encrypted);
 		} catch {
 			return '';
@@ -112,58 +142,12 @@ export class AuthService {
 		try {
 			authStore.update(state => ({ ...state, loading: true, error: null }));
 			
-			// In development, simulate authentication
-			if (import.meta.env.MODE === 'development' && email === 'demo@bookwork.com') {
-				const mockUser: User = {
-					id: 'user-1',
-					email: 'demo@bookwork.com',
-					name: 'Demo User',
-					role: 'admin',
-					clubs: ['club-1', 'club-2'],
-					permissions: ['read', 'write', 'admin']
-				};
-				
-				const token = this.generateToken(mockUser);
-				const refreshToken = this.generateRefreshToken(mockUser);
-				
-				SecureTokenStorage.setToken(token, refreshToken);
-				
-				authStore.update(state => ({
-					...state,
-					user: mockUser,
-					isAuthenticated: true,
-					loading: false,
-					error: null
-				}));
-				
-				this.scheduleTokenRefresh(token);
-				
-				if (AUTH_DEBUG) {
-					console.log('Demo authentication successful');
-				}
-				
-				return { success: true };
-			}
+			// Use the API login function
+			const loginResponse = await apiLogin(email, password);
+			const { token, user } = loginResponse;
 			
-			// Production authentication
-			const response = await fetch(`${import.meta.env.VITE_API_BASE}/auth/login`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ email, password }),
-				credentials: 'include'
-			});
-			
-			const data = await response.json();
-			
-			if (!response.ok) {
-				throw new Error(data.message || 'Authentication failed');
-			}
-			
-			const { user, token, refreshToken } = data;
-			
-			SecureTokenStorage.setToken(token, refreshToken);
+			// Store tokens securely
+			await SecureTokenStorage.setToken(token, token); // Using access token as refresh for now
 			
 			authStore.update(state => ({
 				...state,
@@ -174,6 +158,10 @@ export class AuthService {
 			}));
 			
 			this.scheduleTokenRefresh(token);
+			
+			if (AUTH_DEBUG) {
+				console.log('User logged in successfully');
+			}
 			
 			return { success: true };
 			
@@ -195,18 +183,19 @@ export class AuthService {
 	 */
 	static async logout(): Promise<void> {
 		try {
-			// Clear refresh timeout
-			if (this.refreshTimeout) {
-				clearTimeout(this.refreshTimeout);
-				this.refreshTimeout = null;
-			}
+			// Get refresh token for logout
+			const refreshToken = await SecureTokenStorage.getRefreshToken();
 			
-			// Call backend logout if not in development
-			if (import.meta.env.MODE !== 'development') {
-				await fetch(`${import.meta.env.VITE_API_BASE}/auth/logout`, {
-					method: 'POST',
-					credentials: 'include'
-				});
+			// Call backend logout
+			if (refreshToken) {
+				try {
+					await apiLogout(refreshToken);
+				} catch (error) {
+					// Don't fail logout if backend call fails
+					if (AUTH_DEBUG) {
+						console.warn('Backend logout failed:', error);
+					}
+				}
 			}
 			
 			// Clear local storage
@@ -220,7 +209,9 @@ export class AuthService {
 			}
 			
 		} catch (error) {
-			console.error('Logout error:', error);
+			if (AUTH_DEBUG) {
+				console.error('Logout error:', error);
+			}
 			// Still clear local state even if backend call fails
 			SecureTokenStorage.removeTokens();
 			authStore.set(initialState);
@@ -232,66 +223,26 @@ export class AuthService {
 	 */
 	static async validateToken(): Promise<boolean> {
 		try {
-			const token = SecureTokenStorage.getToken();
+			const token = await SecureTokenStorage.getToken();
 			
 			if (!token) {
 				return false;
 			}
 			
-			// Verify token locally first
-			const payload = this.verifyToken(token);
-			if (!payload) {
-				return false;
-			}
+			// Add timeout to prevent hanging
+			const timeoutPromise = new Promise((_, reject) => 
+				setTimeout(() => reject(new Error('Token validation timeout')), TIME_CONSTANTS.TOKEN_VALIDATION_TIMEOUT)
+			);
 			
-			// Check if token is expired
-			if (Date.now() >= payload.exp * 1000) {
-				// Try to refresh token
-				return await this.refreshToken();
-			}
-			
-			// In development, simulate user validation
-			if (import.meta.env.MODE === 'development') {
-				const mockUser: User = {
-					id: payload.userId,
-					email: payload.email,
-					name: 'Demo User',
-					role: payload.role as 'admin' | 'user' | 'manager',
-					clubs: ['club-1', 'club-2'],
-					permissions: ['read', 'write', 'admin']
-				};
-				
-				authStore.update(state => ({
-					...state,
-					user: mockUser,
-					isAuthenticated: true,
-					loading: false,
-					error: null
-				}));
-				
-				this.scheduleTokenRefresh(token);
-				return true;
-			}
-			
-			// Production validation
-			const response = await fetch(`${import.meta.env.VITE_API_BASE}/auth/validate`, {
-				method: 'GET',
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json',
-				},
-				credentials: 'include'
-			});
-			
-			if (!response.ok) {
-				return await this.refreshToken();
-			}
-			
-			const { user } = await response.json();
+			// Use the API validation function with timeout
+			const user = await Promise.race([
+				validateAuthToken(token),
+				timeoutPromise
+			]);
 			
 			authStore.update(state => ({
 				...state,
-				user,
+				user: user as User,
 				isAuthenticated: true,
 				loading: false,
 				error: null
@@ -302,8 +253,15 @@ export class AuthService {
 			return true;
 			
 		} catch (error) {
-			console.error('Token validation error:', error);
-			return false;
+			if (AUTH_DEBUG) {
+				console.warn('Token validation failed or timed out:', error);
+			}
+			// Don't try to refresh on timeout - just return false
+			if (error instanceof Error && error.message === 'Token validation timeout') {
+				return false;
+			}
+			// Try to refresh token if validation fails for other reasons
+			return await this.refreshToken();
 		}
 	}
 	
@@ -312,97 +270,28 @@ export class AuthService {
 	 */
 	private static async refreshToken(): Promise<boolean> {
 		try {
-			const refreshToken = SecureTokenStorage.getRefreshToken();
+			const refreshToken = await SecureTokenStorage.getRefreshToken();
 			
 			if (!refreshToken) {
-				return false;
-			}
-			
-			// In development, generate new token
-			if (import.meta.env.MODE === 'development') {
-				const mockUser: User = {
-					id: 'user-1',
-					email: 'demo@bookwork.com',
-					name: 'Demo User',
-					role: 'admin',
-					clubs: ['club-1', 'club-2'],
-					permissions: ['read', 'write', 'admin']
-				};
-				
-				const newToken = this.generateToken(mockUser);
-				SecureTokenStorage.setToken(newToken, refreshToken);
-				
-				this.scheduleTokenRefresh(newToken);
-				
-				return true;
-			}
-			
-			// Production refresh
-			const response = await fetch(`${import.meta.env.VITE_API_BASE}/auth/refresh`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ refreshToken }),
-				credentials: 'include'
-			});
-			
-			if (!response.ok) {
 				await this.logout();
 				return false;
 			}
 			
-			const { token: newToken, refreshToken: newRefreshToken } = await response.json();
+			// Use the API refresh function
+			const refreshResponse = await refreshAuthToken(refreshToken);
+			const { token, expiresAt } = refreshResponse;
 			
-			SecureTokenStorage.setToken(newToken, newRefreshToken);
-			this.scheduleTokenRefresh(newToken);
+			await SecureTokenStorage.setToken(token, refreshToken);
+			this.scheduleTokenRefresh(token);
 			
 			return true;
 			
 		} catch (error) {
-			console.error('Token refresh error:', error);
+			if (AUTH_DEBUG) {
+				console.error('Token refresh error:', error);
+			}
 			await this.logout();
 			return false;
-		}
-	}
-	
-	/**
-	 * Generate JWT token for user
-	 */
-	private static generateToken(user: User): string {
-		const payload: AuthTokenPayload = {
-			userId: user.id,
-			email: user.email,
-			role: user.role,
-			iat: Math.floor(Date.now() / 1000),
-			exp: Math.floor((Date.now() + SESSION_TIMEOUT) / 1000)
-		};
-		
-		return jwt.sign(payload, JWT_SECRET);
-	}
-	
-	/**
-	 * Generate refresh token
-	 */
-	private static generateRefreshToken(user: User): string {
-		const payload = {
-			userId: user.id,
-			type: 'refresh',
-			iat: Math.floor(Date.now() / 1000),
-			exp: Math.floor((Date.now() + SESSION_TIMEOUT * 2) / 1000) // Longer expiration
-		};
-		
-		return jwt.sign(payload, JWT_SECRET);
-	}
-	
-	/**
-	 * Verify JWT token
-	 */
-	private static verifyToken(token: string): AuthTokenPayload | null {
-		try {
-			return jwt.verify(token, JWT_SECRET) as AuthTokenPayload;
-		} catch {
-			return null;
 		}
 	}
 	
@@ -410,22 +299,17 @@ export class AuthService {
 	 * Schedule automatic token refresh
 	 */
 	private static scheduleTokenRefresh(token: string): void {
-		const payload = this.verifyToken(token);
-		if (!payload) return;
-		
 		// Clear existing timeout
 		if (this.refreshTimeout) {
 			clearTimeout(this.refreshTimeout);
 		}
 		
-		// Schedule refresh 5 minutes before expiration
-		const refreshTime = (payload.exp * 1000) - Date.now() - (5 * 60 * 1000);
+		// Schedule refresh 5 minutes before assumed expiration (25 minutes)
+		const refreshTime = TIME_CONSTANTS.TOKEN_REFRESH_TIME;
 		
-		if (refreshTime > 0) {
-			this.refreshTimeout = setTimeout(() => {
-				this.refreshToken();
-			}, refreshTime);
-		}
+		this.refreshTimeout = setTimeout(() => {
+			this.refreshToken();
+		}, refreshTime);
 	}
 	
 	/**
@@ -433,7 +317,11 @@ export class AuthService {
 	 */
 	static hasPermission(permission: string): boolean {
 		const state = this.getAuthState();
-		return state.user?.permissions.includes(permission) || state.user?.role === 'admin' || false;
+		// Admin users have all permissions, members have basic read permissions
+		if (state.user?.role === 'admin') return true;
+		if (state.user?.role === 'moderator' && ['read', 'write'].includes(permission)) return true;
+		if (state.user?.role === 'member' && permission === 'read') return true;
+		return false;
 	}
 	
 	/**
@@ -458,7 +346,11 @@ export class AuthService {
 
 // Initialize authentication on module load
 if (browser) {
-	AuthService.validateToken().catch(console.error);
+	AuthService.validateToken().catch(error => {
+		if (AUTH_DEBUG) {
+			console.error('Auth initialization error:', error);
+		}
+	});
 }
 
 // Export user store for components

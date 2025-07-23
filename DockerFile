@@ -4,12 +4,26 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy dependency files and install them
+# Copy dependency files and install all dependencies (dev needed for build)
 COPY package.json package-lock.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy the rest of the source code
 COPY . .
+
+# Set environment variables for build
+ENV NODE_ENV=production
+ENV VITE_ENABLE_MOCK_DATA=false
+ENV VITE_ENABLE_DEBUG_MODE=false
+ENV VITE_ENABLE_ANALYTICS=true
+
+# Build arguments (can be overridden at build time)
+ARG VITE_API_BASE=https://api.bookwork.com/api
+ARG VITE_API_TIMEOUT=30000
+
+# Set build environment variables
+ENV VITE_API_BASE=$VITE_API_BASE
+ENV VITE_API_TIMEOUT=$VITE_API_TIMEOUT
 
 # Build the SvelteKit app for production using adapter-node
 RUN npm run build
@@ -26,9 +40,13 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S sveltekit -u 1001
 
-# Copy built application
+# Copy built application and production dependencies
 COPY --from=builder --chown=sveltekit:nodejs /app/build ./build
 COPY --from=builder --chown=sveltekit:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=sveltekit:nodejs /app/package-lock.json ./package-lock.json
+
+# Install only production dependencies in final image
+RUN npm ci --only=production && npm cache clean --force
 
 # Switch to non-root user
 USER sveltekit
@@ -39,6 +57,7 @@ EXPOSE 3000
 # Environment variable for the Node server
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV VITE_ENABLE_MOCK_DATA=false
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]

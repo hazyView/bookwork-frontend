@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { validateFormData } from '$lib/validation.js';
+	import { validateFormData } from '$lib/validation';
 	import { createEventDispatcher } from 'svelte';
-	import type { ValidationSchema, ValidationResult } from '$lib/validation.js';
+	import type { ValidationSchema, ValidationResult } from '$lib/validation';
 
 	/**
 	 * ValidatedForm component props interface

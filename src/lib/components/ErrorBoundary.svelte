@@ -35,7 +35,7 @@
 		hasError = true;
 		errorDetails = dev && errorObj.stack ? errorObj.stack : '';
 		
-		if (logErrors) {
+		if (logErrors && dev) {
 			console.error('[ErrorBoundary]', appError);
 		}
 		

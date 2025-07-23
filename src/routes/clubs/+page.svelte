@@ -1,14 +1,14 @@
 <script>
-	import { currentClub, user, scheduleEvents, clubMembers } from '$lib/stores.js';
+	import { currentClub, user, scheduleEvents, clubMembers } from '$lib/stores';
 	import { Users, Calendar, CheckCircle, Package, BookOpen, Clock, MapPin } from 'lucide-svelte';
-	import { formatDate, formatTime } from '$lib/utils.js';
+	import { formatDate, formatTime } from '$lib/utils';
 
 	// Get next upcoming event
 	function getNextEvent() {
 		const now = new Date();
 		const upcoming = $scheduleEvents
 			.filter(event => new Date(event.date) >= now)
-			.sort((a, b) => new Date(a.date) - new Date(b.date));
+			.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 		return upcoming[0] || null;
 	}
 

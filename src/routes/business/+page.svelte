@@ -16,11 +16,7 @@
 				through BookWorm's comprehensive business platform.
 			</p>
 			<div class="hero-actions">
-				<a href="/business/services" class="btn btn-primary btn-lg">
-					<Building2 size={20} />
-					Explore Services
-				</a>
-				<a href="/business/website-builder" class="btn btn-outline btn-lg">
+				<a href="/business/website-builder" class="btn btn-primary btn-lg">
 					<Sparkles size={20} />
 					Try Website Builder
 				</a>
@@ -57,7 +53,7 @@
 						Leverage our platform to promote your books, events, and services 
 						to an engaged community of avid readers and book enthusiasts.
 					</p>
-					<a href="/business/services" class="service-link">Learn More</a>
+					<a href="/business/community" class="service-link">Learn More</a>
 				</div>
 			</div>
 
@@ -171,7 +167,7 @@
 				them with passionate readers worldwide.
 			</p>
 			<div class="cta-actions">
-				<a href="/business/services" class="btn btn-primary btn-lg">
+				<a href="/business/community" class="btn btn-primary btn-lg">
 					Get Started Today
 				</a>
 				<a href="/business/about" class="btn btn-outline btn-lg">

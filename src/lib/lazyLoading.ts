@@ -4,6 +4,7 @@
  */
 
 import type { ComponentType } from 'svelte';
+import { isDevelopment } from './env';
 
 interface LazyComponentOptions {
   fallback?: ComponentType;
@@ -51,12 +52,16 @@ export function lazyLoad<T extends ComponentType>(
       attempts++;
       
       if (attempts < retryCount) {
-        console.warn(`Component lazy load attempt ${attempts} failed, retrying...`, error);
+        if (isDevelopment()) {
+          console.warn(`Component lazy load attempt ${attempts} failed, retrying...`, error);
+        }
         await new Promise(resolve => setTimeout(resolve, retryDelay));
         return loadComponent();
       }
 
-      console.error('Component lazy load failed after all retries:', error);
+      if (isDevelopment()) {
+        console.error('Component lazy load failed after all retries:', error);
+      }
       return {
         component: null,
         loading: false,

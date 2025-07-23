@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { 
 		BookOpen, 
 		Users, 
@@ -129,9 +129,9 @@
 		}
 	];
 
-	let openFaqIndex = null;
+	let openFaqIndex: number | null = null;
 
-	function toggleFaq(index) {
+	function toggleFaq(index: number) {
 		openFaqIndex = openFaqIndex === index ? null : index;
 	}
 </script>

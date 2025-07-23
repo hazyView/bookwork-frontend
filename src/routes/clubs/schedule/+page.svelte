@@ -1,68 +1,42 @@
-<script>
+<script lang="ts">
 	import { onMount } from 'svelte';
-	import { scheduleEvents, scheduleLoading, scheduleError, currentClub, user } from '$lib/stores.js';
-	import { fetchScheduleEvents } from '$lib/api.js';
-	import { formatDate, formatTime } from '$lib/utils.js';
-	import { Calendar, Clock, MapPin, BookOpen, Plus, ChevronLeft, ChevronRight } from 'lucide-svelte';
+	import { user, currentClub } from '$lib/stores';
+	import { scheduleEvents, scheduleLoading, scheduleError } from '$lib/stores';
+	import type { ScheduleEvent } from '$lib/stores';
+	import { fetchScheduleEvents } from '$lib/api';
+	import { handleAsyncOperation } from '$lib/components/StandardErrorHandler';
+	import { validateEvent } from '$lib/validation';
+	import { TIME_CONSTANTS } from '$lib/constants';
 
 	let currentDate = new Date();
-	let selectedDate = null;
-	let showEventModal = false;
-	let showAddEventModal = false;
-	let selectedEvent = null;
+	let showNewEventModal = false;
 	let loading = false;
-	let formErrors = {};
-
 	let newEvent = {
 		title: '',
 		date: '',
 		time: '',
 		location: '',
-		book: '',
 		description: ''
 	};
+	let formErrors = {};
 
 	onMount(async () => {
 		if ($currentClub) {
-			scheduleLoading.set(true);
-			scheduleError.set(null);
-			
-			try {
-				const events = await fetchScheduleEvents($currentClub.id);
-				scheduleEvents.set(events);
-			} catch (error) {
-				scheduleError.set(error.message);
-			} finally {
-				scheduleLoading.set(false);
-			}
+			await handleAsyncOperation(
+				() => fetchScheduleEvents($currentClub.id),
+				{
+					setLoading: (loading) => scheduleLoading.set(loading),
+					setError: (error) => scheduleError.set(error),
+					showToast: false,
+					context: 'load schedule events'
+				}
+			).then((events) => {
+				if (events) {
+					scheduleEvents.set(events);
+				}
+			});
 		}
 	});
-
-	function validateEventForm(event) {
-		const errors = {};
-		
-		if (!event.title?.trim()) {
-			errors.title = 'Event title is required';
-		} else if (event.title.length > 100) {
-			errors.title = 'Event title must be less than 100 characters';
-		}
-		
-		if (!event.date) {
-			errors.date = 'Event date is required';
-		} else if (new Date(event.date) < new Date().setHours(0,0,0,0)) {
-			errors.date = 'Event date cannot be in the past';
-		}
-		
-		if (!event.time) {
-			errors.time = 'Event time is required';
-		}
-
-		if (!event.location?.trim()) {
-			errors.location = 'Event location is required';
-		}
-		
-		return errors;
-	}
 
 	function getCalendarDays() {
 		const year = currentDate.getFullYear();
@@ -83,21 +57,21 @@
 		return days;
 	}
 
-	function isCurrentMonth(date) {
+	function isCurrentMonth(date: Date): boolean {
 		return date.getMonth() === currentDate.getMonth();
 	}
 
-	function isToday(date) {
+	function isToday(date: Date): boolean {
 		const today = new Date();
 		return date.toDateString() === today.toDateString();
 	}
 
-	function hasEvent(date) {
+	function hasEvent(date: Date): boolean {
 		const dateStr = date.toISOString().split('T')[0];
 		return $scheduleEvents.some(event => event.date === dateStr);
 	}
 
-	function getEventsForDate(date) {
+	function getEventsForDate(date: Date): ScheduleEvent[] {
 		const dateStr = date.toISOString().split('T')[0];
 		return $scheduleEvents.filter(event => event.date === dateStr);
 	}
@@ -112,7 +86,7 @@
 		currentDate = new Date(currentDate);
 	}
 
-	function selectDate(date) {
+	function selectDate(date: Date): void {
 		selectedDate = date;
 		const events = getEventsForDate(date);
 		if (events.length > 0) {
@@ -121,7 +95,7 @@
 		}
 	}
 
-	function openAddEventModal() {
+	function openAddEventModal(): void {
 		showAddEventModal = true;
 		newEvent = {
 			title: '',
@@ -129,44 +103,74 @@
 			time: '',
 			location: '',
 			book: '',
-			description: ''
+			notes: ''
 		};
+		// Set focus trap reference and focus management
+		setTimeout(() => {
+			const modal = document.querySelector('.modal[role="document"]') as HTMLElement;
+			modal?.focus();
+			// Focus first input field
+			const firstInput = modal?.querySelector('input') as HTMLElement;
+			firstInput?.focus();
+		}, 10);
 	}
 
+	// Close modal functions
 	function closeModals() {
 		showEventModal = false;
 		showAddEventModal = false;
 		selectedEvent = null;
-		formErrors = {};
-		newEvent = {
-			title: '',
-			date: '',
-			time: '',
-			location: '',
-			book: '',
-			description: ''
-		};
+		// Return focus to the element that opened the modal
+		const lastFocusedElement = document.querySelector('[data-modal-trigger]') as HTMLElement;
+		lastFocusedElement?.focus();
 	}
 
-	function addEvent() {
-		formErrors = validateEventForm(newEvent);
+	// Open event modal with focus management
+	function openEventModal(event: any) {
+		selectedEvent = event;
+		showEventModal = true;
+		// Set focus trap reference
+		setTimeout(() => {
+			const modal = document.querySelector('.modal[role="document"]') as HTMLElement;
+			modal?.focus();
+		}, 10);
+	}	function addEvent(): void {
+		// Use centralized validation
+		const validation = validateEvent(newEvent);
 		
-		if (Object.keys(formErrors).length === 0) {
-			loading = true;
-			
-			const event = {
-				id: `event-${Date.now()}`,
-				...newEvent,
-				attendees: [$user.id]
-			};
-			
-			// Simulate API call
-			setTimeout(() => {
-				scheduleEvents.update(events => [...events, event]);
-				loading = false;
-				closeModals();
-			}, 500);
+		if (!validation.isValid) {
+			// Convert array errors to single string for each field
+			formErrors = Object.fromEntries(
+				Object.entries(validation.errors).map(([key, errors]) => [key, errors[0]])
+			);
+			return;
 		}
+		
+		// Clear any existing errors
+		formErrors = {};
+		
+		if (!$user) {
+			formErrors.general = 'User not authenticated';
+			return;
+		}
+		
+		loading = true;
+		
+		// Use sanitized data from validation
+		const sanitizedEventData = validation.data;
+		
+		const event: ScheduleEvent = {
+			id: `event-${Date.now()}`,
+			...sanitizedEventData,
+			attendees: [$user.id]
+		};
+		
+		// Simulate API call
+		setTimeout(() => {
+			scheduleEvents.update(events => [...events, event]);
+			loading = false;
+			closeModals();
+		}, TIME_CONSTANTS.API_TIMEOUT);
 	}
 
 	const monthNames = [
@@ -188,7 +192,12 @@
 			<p class="page-subtitle">{$currentClub.name}</p>
 		{/if}
 		{#if $user?.role === 'Club Lead' || $user?.role === 'Co-Lead'}
-			<button class="btn btn-primary" on:click={openAddEventModal}>
+			<button 
+				class="btn btn-primary" 
+				data-modal-trigger
+				aria-label="Add a new event to the schedule"
+				onclick={openAddEventModal}
+			>
 				<Plus size={16} />
 				Add Event
 			</button>
@@ -207,13 +216,13 @@
 	{:else}
 		<div class="calendar-container card">
 			<div class="calendar-header">
-				<button class="nav-btn" on:click={previousMonth}>
+				<button class="nav-btn" onclick={previousMonth}>
 					<ChevronLeft size={20} />
 				</button>
 				<h2 class="calendar-title">
 					{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
 				</h2>
-				<button class="nav-btn" on:click={nextMonth}>
+				<button class="nav-btn" onclick={nextMonth}>
 					<ChevronRight size={20} />
 				</button>
 			</div>
@@ -230,7 +239,7 @@
 							class:other-month={!isCurrentMonth(date)}
 							class:today={isToday(date)}
 							class:has-event={hasEvent(date)}
-							on:click={() => selectDate(date)}
+							onclick={() => selectDate(date)}
 						>
 							<span class="day-number">{date.getDate()}</span>
 							{#if hasEvent(date)}
@@ -294,7 +303,9 @@
 									</span>
 									<button 
 										class="btn btn-outline btn-sm"
-										on:click={() => { selectedEvent = event; showEventModal = true; }}
+										data-modal-trigger
+										aria-label="View details for {event.title}"
+										onclick={() => openEventModal(event)}
 									>
 										View Details
 									</button>
@@ -313,20 +324,42 @@
 	<div 
 		class="modal-overlay" 
 		role="dialog"
+		tabindex="-1"
 		aria-modal="true"
 		aria-label="Event details"
-		on:click={closeModals}
-		on:keydown={(e) => e.key === 'Escape' && closeModals()}
+		onclick={closeModals}
+		onkeydown={(e) => e.key === 'Escape' && closeModals()}
 	>
-		<div 
+		<section 
 			class="modal" 
-			role="document"
-			on:click|stopPropagation
-			on:keydown={(e) => e.key === 'Enter' && e.stopPropagation()}
+			role="dialog"
+			tabindex="0"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.stopPropagation();
+				}
+				if (e.key === 'Tab') {
+					// Trap focus within modal
+					const focusableElements = e.currentTarget.querySelectorAll(
+						'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+					);
+					const firstElement = focusableElements[0] as HTMLElement;
+					const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+					
+					if (e.shiftKey && document.activeElement === firstElement) {
+						e.preventDefault();
+						lastElement?.focus();
+					} else if (!e.shiftKey && document.activeElement === lastElement) {
+						e.preventDefault();
+						firstElement?.focus();
+					}
+				}
+			}}
 		>
 			<div class="modal-header">
 				<h2>{selectedEvent.title}</h2>
-				<button class="close-btn" on:click={closeModals}>×</button>
+				<button class="close-btn" onclick={closeModals}>×</button>
 			</div>
 			<div class="modal-body">
 				<div class="event-details-full">
@@ -355,7 +388,7 @@
 					<p>Members who will be attending this event.</p>
 				</div>
 			</div>
-		</div>
+		</section>
 	</div>
 {/if}
 
@@ -364,23 +397,45 @@
 	<div 
 		class="modal-overlay" 
 		role="dialog"
+		tabindex="-1"
 		aria-modal="true"
 		aria-label="Add new event"
-		on:click={closeModals}
-		on:keydown={(e) => e.key === 'Escape' && closeModals()}
+		onclick={closeModals}
+		onkeydown={(e) => e.key === 'Escape' && closeModals()}
 	>
-		<div 
+		<section 
 			class="modal" 
-			role="document"
-			on:click|stopPropagation
-			on:keydown={(e) => e.key === 'Enter' && e.stopPropagation()}
+			role="dialog"
+			tabindex="0"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.stopPropagation();
+				}
+				if (e.key === 'Tab') {
+					// Trap focus within modal
+					const focusableElements = e.currentTarget.querySelectorAll(
+						'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+					);
+					const firstElement = focusableElements[0] as HTMLElement;
+					const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+					
+					if (e.shiftKey && document.activeElement === firstElement) {
+						e.preventDefault();
+						lastElement?.focus();
+					} else if (!e.shiftKey && document.activeElement === lastElement) {
+						e.preventDefault();
+						firstElement?.focus();
+					}
+				}
+			}}
 		>
 			<div class="modal-header">
 				<h2>Add New Event</h2>
-				<button class="close-btn" on:click={closeModals}>×</button>
+				<button class="close-btn" onclick={closeModals}>×</button>
 			</div>
 			<div class="modal-body">
-				<form on:submit|preventDefault={addEvent} class="event-form">
+				<form onsubmit={(e) => { e.preventDefault(); addEvent(); }} class="event-form">
 					<div class="form-group">
 						<label class="form-label" for="title">Event Title *</label>
 						<input 
@@ -466,7 +521,7 @@
 					</div>
 
 					<div class="form-actions">
-						<button type="button" class="btn btn-secondary" on:click={closeModals}>
+						<button type="button" class="btn btn-secondary" onclick={closeModals}>
 							Cancel
 						</button>
 						<button type="submit" class="btn btn-primary" disabled={loading}>
@@ -480,7 +535,7 @@
 					</div>
 				</form>
 			</div>
-		</div>
+		</section>
 	</div>
 {/if}
 

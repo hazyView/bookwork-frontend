@@ -5,37 +5,113 @@
  */
 
 import { z } from 'zod';
-import { mockDataService } from './mockDataService';
-import { env } from './env';
+import { getApiConfig, isDevelopment, isMockDataEnabled } from './env';
+import { TIME_CONSTANTS } from './constants';
+import CryptoUtils from './crypto.js';
 
-const API_BASE = env.VITE_API_BASE || '/api';
-const IS_DEVELOPMENT = env.NODE_ENV === 'development';
+// Import token storage for authorization headers
+import { browser } from '$app/environment';
 
 /**
- * Custom API Error class for standardized error handling
- * Extends Error with additional context and HTTP status codes
+ * Get current authentication token from storage using secure encryption
  */
-export class ApiError extends Error {
-    public readonly statusCode: number;
-    public readonly userMessage: string;
-    public readonly context?: Record<string, any>;
-    public readonly timestamp: Date;
+async function getAuthToken(): Promise<string | null> {
+	if (!browser) return null;
+	
+	try {
+		const TOKEN_KEY = '__auth_token';
+		const encrypted = sessionStorage.getItem(TOKEN_KEY);
+		
+		if (!encrypted) return null;
+		
+		// Use proper AES-GCM decryption for security
+		try {
+			// Try to parse as JSON (new encrypted format with IV)
+			const parsed = JSON.parse(encrypted);
+			if (parsed.data && parsed.iv) {
+				return await CryptoUtils.decrypt(parsed.data, parsed.iv);
+			}
+		} catch {
+			// Fall back to base64 decoding for legacy tokens
+			return atob(encrypted);
+		}
+		
+		return null;
+	} catch {
+		return null;
+	}
+}
 
-    constructor(
-        message: string,
-        statusCode: number = 500,
-        userMessage?: string,
-        context?: Record<string, any>
-    ) {
+// Lazy-loaded API configuration
+let _apiConfig: ReturnType<typeof getApiConfig> | null = null;
+function getConfig() {
+	if (!_apiConfig) {
+		_apiConfig = getApiConfig();
+	}
+	return _apiConfig;
+}
+
+const getAPIBase = () => getConfig().baseUrl;
+const getAPITimeout = () => getConfig().timeout;
+
+/**
+ * Enhanced API Error classes for specific error scenarios
+ */
+
+// Base API Error class
+export class ApiError extends Error {
+    public statusCode: number;
+    public userMessage: string;
+    public context?: Record<string, unknown>;
+    public timestamp: Date;
+    public code?: string;
+    public details?: Record<string, unknown>;
+
+    constructor(response?: Response, body?: any) {
+        // Handle different error formats
+        let message = 'An error occurred';
+        let statusCode = 500;
+        let code: string | undefined;
+        let details: Record<string, unknown> | undefined;
+
+        if (response) {
+            statusCode = response.status;
+        }
+
+        if (body) {
+            // Handle standardized backend error format
+            if (body.error && body.code) {
+                message = body.message || body.error;
+                code = body.code;
+                details = body.details;
+            } 
+            // Handle legacy format
+            else if (body.message) {
+                message = body.message;
+            }
+            // Handle string errors
+            else if (typeof body === 'string') {
+                message = body;
+            }
+        }
+
         super(message);
+        
         this.name = 'ApiError';
         this.statusCode = statusCode;
-        this.userMessage = userMessage || this.getDefaultUserMessage(statusCode);
-        this.context = context;
+        this.userMessage = this.generateUserMessage(statusCode, message);
         this.timestamp = new Date();
+        this.code = code;
+        this.details = details;
     }
 
-    private getDefaultUserMessage(statusCode: number): string {
+    private generateUserMessage(statusCode: number, serverMessage?: string): string {
+        // Use server message if it's user-friendly
+        if (serverMessage && this.isUserFriendlyMessage(serverMessage)) {
+            return serverMessage;
+        }
+
+        // Otherwise, generate a generic user-friendly message
         switch (statusCode) {
             case 400:
                 return 'The request was invalid. Please check your input and try again.';
@@ -45,15 +121,24 @@ export class ApiError extends Error {
                 return 'You do not have permission to access this resource.';
             case 404:
                 return 'The requested resource could not be found.';
+            case 422:
+                return 'The data provided is invalid. Please check and try again.';
             case 429:
                 return 'Too many requests. Please wait a moment and try again.';
             case 500:
                 return 'An internal server error occurred. Please try again later.';
+            case 502:
+                return 'The server is temporarily unavailable. Please try again later.';
             case 503:
                 return 'The service is temporarily unavailable. Please try again later.';
             default:
                 return 'An unexpected error occurred. Please try again later.';
         }
+    }
+
+    private isUserFriendlyMessage(message: string): boolean {
+        const technicalTerms = ['null', 'undefined', 'exception', 'stack', 'trace', 'sql', 'database'];
+        return !technicalTerms.some(term => message.toLowerCase().includes(term)) && message.length < 200;
     }
 
     toJSON() {
@@ -62,9 +147,88 @@ export class ApiError extends Error {
             message: this.message,
             statusCode: this.statusCode,
             userMessage: this.userMessage,
-            context: this.context,
+            code: this.code,
+            details: this.details,
             timestamp: this.timestamp.toISOString(),
         };
+    }
+}
+
+// Network-related errors
+export class NetworkError extends ApiError {
+    constructor(originalError?: Error) {
+        super(new Response(null, { status: 0 }), {
+            error: 'Network error',
+            message: 'Unable to connect to the server. Please check your internet connection.',
+            code: 'NETWORK_ERROR'
+        });
+        this.name = 'NetworkError';
+        if (originalError) {
+            this.context = { originalError: originalError.message };
+        }
+    }
+}
+
+// Authentication-related errors
+export class AuthenticationError extends ApiError {
+    constructor(response: Response, body?: any) {
+        super(response, body);
+        this.name = 'AuthenticationError';
+        this.userMessage = 'Your session has expired. Please log in again.';
+    }
+}
+
+// Authorization-related errors
+export class AuthorizationError extends ApiError {
+    constructor(response: Response, body?: any) {
+        super(response, body);
+        this.name = 'AuthorizationError';
+        this.userMessage = 'You do not have permission to perform this action.';
+    }
+}
+
+// Validation-related errors
+export class ValidationError extends ApiError {
+    constructor(validationIssues: any[], message?: string) {
+        super(new Response(null, { status: 422 }), {
+            error: 'Validation error',
+            message: message || 'The data provided is invalid',
+            code: 'VALIDATION_ERROR',
+            details: { validationErrors: validationIssues }
+        });
+        this.name = 'ValidationError';
+        this.userMessage = 'Please check your input and try again.';
+    }
+}
+
+// Rate limiting errors
+export class RateLimitError extends ApiError {
+    constructor(response: Response, body?: any) {
+        super(response, body);
+        this.name = 'RateLimitError';
+        this.userMessage = 'Too many requests. Please wait a moment and try again.';
+    }
+}
+
+// Server-related errors
+export class ServerError extends ApiError {
+    constructor(response: Response, body?: any) {
+        super(response, body);
+        this.name = 'ServerError';
+        this.userMessage = 'A server error occurred. Our team has been notified.';
+    }
+}
+
+// Timeout errors
+export class TimeoutError extends ApiError {
+    constructor() {
+        super(new Response(null, { status: 408 }), {
+            error: 'Request timeout',
+            message: 'The request took too long to complete',
+            code: 'TIMEOUT_ERROR'
+        });
+        this.name = 'TimeoutError';
+        this.userMessage = 'The request timed out. Please try again.';
     }
 }
 
@@ -72,20 +236,28 @@ export class ApiError extends Error {
  * Zod schemas for API response validation
  */
 
-// User schema
+// User schema - matches Go User model
 const UserSchema = z.object({
-    id: z.string().min(1, 'User ID is required'),
+    id: z.string().uuid('User ID must be a valid UUID'),
     name: z.string().min(1, 'User name is required'),
     email: z.string().email('Invalid email format'),
-    avatar: z.string().url('Avatar must be a valid URL').optional(),
-    role: z.enum(['admin', 'member', 'guest']),
+    phone: z.string().nullable().optional(),
+    avatar: z.string().url('Avatar must be a valid URL').nullable().optional(),
+    role: z.enum(['admin', 'moderator', 'member', 'guest']),
+    isActive: z.boolean(),
+    lastLoginAt: z.string().datetime('Invalid last login date').nullable().optional(),
+    createdAt: z.string().datetime('Invalid creation date'),
+    updatedAt: z.string().datetime('Invalid update date').optional(),
+    joinedDate: z.string().datetime('Invalid join date').nullable().optional(), // For API compatibility
 });
 
-// Club member schema
+// Club member schema - extends User with club-specific data
 const ClubMemberSchema = UserSchema.extend({
     joinDate: z.string().datetime('Invalid join date format'),
     status: z.enum(['active', 'inactive', 'pending']),
     permissions: z.array(z.string()).optional(),
+    booksRead: z.number().int().min(0).optional(),
+    clubRole: z.enum(['admin', 'moderator', 'member', 'guest']).optional(),
 });
 
 // Event schema
@@ -137,22 +309,34 @@ const AuthResponseSchema = z.object({
 
 // Convert mock club members to schema format
 async function adaptMockClubMembers(): Promise<z.infer<typeof ClubMemberSchema>[]> {
-    const mockMembers = await mockDataService.getClubMembers();
+    const mockDataService = await import('./mockDataService');
+    const mockService = await mockDataService.getMockDataService();
+    const mockMembers = await mockService.getClubMembers();
     return mockMembers.map((member: any) => ({
         id: member.id,
         name: member.name,
         email: member.email,
+        phone: null,
         avatar: member.avatar,
-        role: (member.role === 'admin' || member.role === 'guest') ? member.role : 'member' as const,
+        role: (member.role === 'admin' || member.role === 'moderator' || member.role === 'guest') ? member.role as 'admin' | 'moderator' | 'guest' : 'member' as const,
+        isActive: true,
+        lastLoginAt: null,
+        createdAt: new Date(Date.now() - Math.random() * TIME_CONSTANTS.MOCK_DATA_DATE_RANGE_DAYS * 24 * 60 * 60 * 1000).toISOString(), // Random date in last 30 days
+        updatedAt: new Date().toISOString(),
+        joinedDate: new Date(member.joinedDate || Date.now()).toISOString(),
         joinDate: new Date(member.joinedDate || Date.now()).toISOString(),
         status: 'active' as const,
         permissions: member.role === 'admin' ? ['read', 'write', 'delete'] : ['read'],
+        booksRead: Math.floor(Math.random() * 50),
+        clubRole: (member.role === 'admin' || member.role === 'moderator' || member.role === 'guest') ? member.role as 'admin' | 'moderator' | 'guest' : 'member' as const,
     }));
 }
 
 // Convert mock events to schema format
 async function adaptMockEvents(): Promise<z.infer<typeof EventSchema>[]> {
-    const mockEvents = await mockDataService.getScheduleEvents();
+    const mockDataService = await import('./mockDataService');
+    const mockService = await mockDataService.getMockDataService();
+    const mockEvents = await mockService.getScheduleEvents();
     return mockEvents.map((event: any) => ({
         id: event.id,
         title: event.title,
@@ -167,7 +351,9 @@ async function adaptMockEvents(): Promise<z.infer<typeof EventSchema>[]> {
 
 // Convert mock event items to schema format
 async function adaptMockEventItems(eventId: string): Promise<z.infer<typeof EventItemSchema>[]> {
-    const items = await mockDataService.getEventItems(eventId);
+    const mockDataService = await import('./mockDataService');
+    const mockService = await mockDataService.getMockDataService();
+    const items = await mockService.getEventItems(eventId);
     return items.map((item: any) => ({
         id: item.id,
         title: item.name || item.title,
@@ -181,7 +367,9 @@ async function adaptMockEventItems(eventId: string): Promise<z.infer<typeof Even
 
 // Convert mock availability to schema format
 async function adaptMockAvailability(eventId: string): Promise<Record<string, z.infer<typeof AvailabilitySchema>>> {
-    const availability = await mockDataService.getMeetingAvailability(eventId);
+    const mockDataService = await import('./mockDataService');
+    const mockService = await mockDataService.getMockDataService();
+    const availability = await mockService.getMeetingAvailability(eventId);
     const adapted: Record<string, z.infer<typeof AvailabilitySchema>> = {};
     
     Object.entries(availability).forEach(([userId, status]) => {
@@ -199,90 +387,337 @@ async function adaptMockAvailability(eventId: string): Promise<Record<string, z.
 }
 
 /**
- * Generic API request handler with runtime validation
- * @param url - API endpoint URL
- * @param options - Fetch options
- * @param schema - Zod schema for response validation
- * @returns Promise with validated response data
+ * Circuit breaker state tracking
  */
-async function apiRequest<T>(
-    url: string, 
-    options: RequestInit = {}, 
-    schema?: z.ZodType<T>
-): Promise<T> {
-    try {
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                ...options.headers,
-            },
+interface CircuitBreakerState {
+    failures: number;
+    lastFailTime: number;
+    state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+}
+
+const circuitBreakers = new Map<string, CircuitBreakerState>();
+
+/**
+ * Circuit breaker configuration
+ */
+const CIRCUIT_BREAKER_CONFIG = {
+    failureThreshold: 5, // Open circuit after 5 consecutive failures
+    timeout: 30000, // 30 seconds before trying half-open
+    successThreshold: 2 // Close circuit after 2 consecutive successes in half-open
+};
+
+/**
+ * Get circuit breaker state for an endpoint
+ */
+function getCircuitBreakerState(endpoint: string): CircuitBreakerState {
+    if (!circuitBreakers.has(endpoint)) {
+        circuitBreakers.set(endpoint, {
+            failures: 0,
+            lastFailTime: 0,
+            state: 'CLOSED'
         });
+    }
+    return circuitBreakers.get(endpoint)!;
+}
 
-        if (!response.ok) {
-            const errorBody = await response.text();
-            let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-            
-            try {
-                const errorJson = JSON.parse(errorBody);
-                errorMessage = errorJson.message || errorMessage;
-            } catch {
-                // Use default message if JSON parsing fails
+/**
+ * Update circuit breaker on success
+ */
+function onCircuitBreakerSuccess(endpoint: string) {
+    const state = getCircuitBreakerState(endpoint);
+    if (state.state === 'HALF_OPEN') {
+        // Reset to closed after successful half-open request
+        state.state = 'CLOSED';
+        state.failures = 0;
+    } else if (state.state === 'CLOSED') {
+        // Reset failure count on successful closed request
+        state.failures = 0;
+    }
+}
+
+/**
+ * Update circuit breaker on failure
+ */
+function onCircuitBreakerFailure(endpoint: string) {
+    const state = getCircuitBreakerState(endpoint);
+    state.failures++;
+    state.lastFailTime = Date.now();
+    
+    if (state.failures >= CIRCUIT_BREAKER_CONFIG.failureThreshold) {
+        state.state = 'OPEN';
+    }
+}
+
+/**
+ * Check if circuit breaker allows request
+ */
+function canMakeRequest(endpoint: string): boolean {
+    const state = getCircuitBreakerState(endpoint);
+    
+    switch (state.state) {
+        case 'CLOSED':
+            return true;
+        case 'OPEN':
+            // Check if timeout has passed to move to half-open
+            if (Date.now() - state.lastFailTime > CIRCUIT_BREAKER_CONFIG.timeout) {
+                state.state = 'HALF_OPEN';
+                return true;
             }
+            return false;
+        case 'HALF_OPEN':
+            return true;
+        default:
+            return true;
+    }
+}
 
-            throw new ApiError(
-                errorMessage,
-                response.status,
-                undefined,
-                { url, method: options.method || 'GET' }
+/**
+ * Retry configuration
+ */
+const RETRY_CONFIG = {
+    maxRetries: 3,
+    baseDelay: 1000, // 1 second base delay
+    maxDelay: 10000, // 10 second max delay
+    retryableStatus: [408, 429, 500, 502, 503, 504], // HTTP status codes to retry
+    retryableErrors: ['NetworkError', 'TimeoutError'] // Error types to retry
+};
+
+/**
+ * Calculate exponential backoff delay
+ */
+function calculateRetryDelay(attempt: number): number {
+    const delay = RETRY_CONFIG.baseDelay * Math.pow(2, attempt);
+    const jitter = Math.random() * 0.1 * delay; // Add 10% jitter
+    return Math.min(delay + jitter, RETRY_CONFIG.maxDelay);
+}
+
+/**
+ * Check if error is retryable
+ */
+function isRetryableError(error: any): boolean {
+    if (error instanceof ApiError) {
+        return RETRY_CONFIG.retryableStatus.includes(error.statusCode);
+    }
+    return RETRY_CONFIG.retryableErrors.includes(error.name);
+}
+
+/**
+ * Creates a fetch request with timeout, retry logic, and circuit breaker
+ */
+function createResilientFetch(timeout: number = getAPITimeout()) {
+    return async function(url: string, options: RequestInit = {}, retryAttempt = 0): Promise<Response> {
+        const endpoint = new URL(url).pathname;
+        
+        // Circuit breaker check
+        if (!canMakeRequest(endpoint)) {
+            throw new ServerError(
+                new Response(null, { status: 503 }), 
+                {
+                    error: 'Circuit breaker open',
+                    message: 'Service temporarily unavailable due to repeated failures',
+                    code: 'CIRCUIT_BREAKER_OPEN'
+                }
             );
         }
+        
+        try {
+            const response = await new Promise<Response>((resolve, reject) => {
+                const timeoutId = setTimeout(() => {
+                    reject(new TimeoutError());
+                }, timeout);
 
+                fetch(url, options)
+                    .then(response => {
+                        clearTimeout(timeoutId);
+                        resolve(response);
+                    })
+                    .catch(error => {
+                        clearTimeout(timeoutId);
+                        reject(error);
+                    });
+            });
+            
+            // Success - update circuit breaker
+            onCircuitBreakerSuccess(endpoint);
+            return response;
+            
+        } catch (error) {
+            // Update circuit breaker on failure
+            onCircuitBreakerFailure(endpoint);
+            
+            // Retry logic
+            if (retryAttempt < RETRY_CONFIG.maxRetries && isRetryableError(error)) {
+                const delay = calculateRetryDelay(retryAttempt);
+                
+                if (isDevelopment()) {
+                    console.warn(`[API] Retrying request to ${url} in ${delay}ms (attempt ${retryAttempt + 1}/${RETRY_CONFIG.maxRetries})`);
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return createResilientFetch(timeout)(url, options, retryAttempt + 1);
+            }
+            
+            throw error;
+        }
+    };
+}
+
+// Lazy-loaded fetch function to avoid module-time evaluation
+let _resilientFetch: ReturnType<typeof createResilientFetch> | null = null;
+function getResilientFetch() {
+	if (!_resilientFetch) {
+		_resilientFetch = createResilientFetch();
+	}
+	return _resilientFetch;
+}
+
+/**
+ * Generic API request function with comprehensive error handling and validation
+ * @param url - The API endpoint URL
+ * @param options - Fetch options (method, headers, body, etc.)
+ * @param schema - Zod schema for response validation
+ * @returns Validated response data
+ */
+/**
+ * Generic API request function with comprehensive error handling and validation
+ * @param url - The API endpoint URL
+ * @param options - Fetch options (method, headers, body, etc.)
+ * @param schema - Zod schema for response validation
+ * @returns Validated response data
+ */
+async function apiRequest<T>(
+    url: string,
+    options: RequestInit = {},
+    schema?: z.ZodSchema<T>
+): Promise<T> {
+    try {
+        // Get authentication token and build headers
+        const token = await getAuthToken();
+        const headers: Record<string, string> = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            ...options.headers as Record<string, string>,
+        };
+        
+        // Add authorization header if token is available
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+            // Debug logging in development to verify token is being sent
+            if (isDevelopment()) {
+                console.log('[API] Request with token:', url, 'Token length:', token.length);
+            }
+        } else {
+            // Debug logging in development to identify missing tokens
+            if (isDevelopment()) {
+                console.log('[API] Request without token:', url);
+            }
+        }
+        
+        const response = await getResilientFetch()(url, {
+            ...options,
+            headers,
+        });
+
+        // Check if response is OK
+        if (!response.ok) {
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch {
+                // If JSON parsing fails, create appropriate error based on status
+                const errorData = {
+                    error: `HTTP ${response.status}: ${response.statusText}`,
+                    message: `Request failed with status ${response.status}`,
+                    code: 'HTTP_ERROR'
+                };
+                
+                // Create specific error types based on status code
+                switch (response.status) {
+                    case 401:
+                        throw new AuthenticationError(response, errorData);
+                    case 403:
+                        throw new AuthorizationError(response, errorData);
+                    case 429:
+                        throw new RateLimitError(response, errorData);
+                    case 422:
+                        throw new ValidationError([], errorData.message);
+                    case 500:
+                    case 502:
+                    case 503:
+                        throw new ServerError(response, errorData);
+                    default:
+                        throw new ApiError(response, errorData);
+                }
+            }
+
+            // Create specific error types based on status code and response data
+            switch (response.status) {
+                case 401:
+                    throw new AuthenticationError(response, errorData);
+                case 403:
+                    throw new AuthorizationError(response, errorData);
+                case 429:
+                    throw new RateLimitError(response, errorData);
+                case 422:
+                    throw new ValidationError(errorData.details?.validationErrors || [], errorData.message);
+                case 500:
+                case 502:
+                case 503:
+                    throw new ServerError(response, errorData);
+                default:
+                    throw new ApiError(response, errorData);
+            }
+        }
+
+        // Parse response body
         const data = await response.json();
 
         // Validate response with schema if provided
         if (schema) {
             try {
-                return schema.parse(data);
+                return schema.parse(data.data || data);
             } catch (error) {
                 if (error instanceof z.ZodError) {
-                    throw new ApiError(
-                        'Invalid response data from server',
-                        500,
-                        'The server returned invalid data. Please try again.',
-                        { 
-                            url, 
-                            validationErrors: error.issues,
-                            receivedData: data 
-                        }
-                    );
+                    throw new ValidationError((error as z.ZodError).issues, 'The server returned data in an unexpected format');
                 }
                 throw error;
             }
         }
 
-        return data as T;
+        return data.data || data;
     } catch (error) {
-        if (error instanceof ApiError) {
+        // Handle AbortController timeout
+        if (error instanceof DOMException && error.name === 'AbortError') {
+            throw new TimeoutError();
+        }
+
+        // Handle network errors (fetch failures)
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+            throw new NetworkError(error as Error);
+        }
+
+        // Re-throw specific error types
+        if (error instanceof ApiError || 
+            error instanceof NetworkError || 
+            error instanceof ValidationError || 
+            error instanceof AuthenticationError || 
+            error instanceof AuthorizationError || 
+            error instanceof RateLimitError || 
+            error instanceof ServerError || 
+            error instanceof TimeoutError) {
             throw error;
         }
 
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-            throw new ApiError(
-                'Network error: Unable to connect to server',
-                0,
-                'Unable to connect to the server. Please check your internet connection and try again.',
-                { url }
-            );
+        // Handle unknown errors - log for debugging in development
+        if (isDevelopment()) {
+            console.error('Unknown API error:', error);
         }
 
-        throw new ApiError(
-            error instanceof Error ? error.message : 'Unknown error occurred',
-            500,
-            'An unexpected error occurred. Please try again.',
-            { url, originalError: error }
-        );
+        throw new ServerError(new Response(null, { status: 500 }), {
+            error: 'Unknown error occurred',
+            message: 'An unexpected error occurred. Please try again.',
+            code: 'UNKNOWN_ERROR'
+        });
     }
 }
 
@@ -296,14 +731,14 @@ async function apiRequest<T>(
  * @returns Promise with validated club members array
  */
 export async function fetchClubMembers(clubId: string): Promise<z.infer<typeof ClubMemberSchema>[]> {
-    if (IS_DEVELOPMENT) {
-        // Return adapted mock data in development
+    if (isMockDataEnabled()) {
+        // Return adapted mock data when mock data is enabled
         return adaptMockClubMembers();
     }
     
     const membersSchema = z.array(ClubMemberSchema);
     return apiRequest(
-        `${API_BASE}/club/${clubId}/members`,
+        `${getAPIBase()}/club/${clubId}/members`,
         {},
         membersSchema
     );
@@ -319,13 +754,13 @@ export async function fetchClubMembers(clubId: string): Promise<z.infer<typeof C
  * @returns Promise with validated events array
  */
 export async function fetchScheduleEvents(clubId: string): Promise<z.infer<typeof EventSchema>[]> {
-    if (IS_DEVELOPMENT) {
+    if (isMockDataEnabled()) {
         return adaptMockEvents();
     }
     
     const eventsSchema = z.array(EventSchema);
     return apiRequest(
-        `${API_BASE}/club/${clubId}/events`,
+        `${getAPIBase()}/club/${clubId}/events`,
         {},
         eventsSchema
     );
@@ -347,7 +782,7 @@ export async function updateAvailability(
     userId: string, 
     status: 'available' | 'unavailable' | 'maybe'
 ): Promise<{ success: boolean; eventId: string; userId: string; status: string }> {
-    if (IS_DEVELOPMENT) {
+    if (isMockDataEnabled()) {
         return new Promise(resolve => {
             setTimeout(() => {
                 resolve({ success: true, eventId, userId, status });
@@ -363,7 +798,7 @@ export async function updateAvailability(
     });
 
     return apiRequest(
-        `${API_BASE}/events/${eventId}/availability`,
+        `${getAPIBase()}/events/${eventId}/availability`,
         {
             method: 'POST',
             body: JSON.stringify({ userId, status })
@@ -378,13 +813,13 @@ export async function updateAvailability(
  * @returns Promise with availability data
  */
 export async function fetchAvailability(eventId: string): Promise<Record<string, z.infer<typeof AvailabilitySchema>>> {
-    if (IS_DEVELOPMENT) {
+    if (isMockDataEnabled()) {
         return adaptMockAvailability(eventId);
     }
     
     const availabilitySchema = z.record(z.string(), AvailabilitySchema);
     return apiRequest(
-        `${API_BASE}/events/${eventId}/availability`,
+        `${getAPIBase()}/events/${eventId}/availability`,
         {},
         availabilitySchema
     );
@@ -404,7 +839,7 @@ export async function addEventItem(
     eventId: string, 
     item: Omit<z.infer<typeof EventItemSchema>, 'id'>
 ): Promise<z.infer<typeof EventItemSchema>> {
-    if (IS_DEVELOPMENT) {
+    if (isMockDataEnabled()) {
         return new Promise(resolve => {
             setTimeout(() => {
                 const newItem = {
@@ -418,7 +853,7 @@ export async function addEventItem(
     }
     
     return apiRequest(
-        `${API_BASE}/events/${eventId}/items`,
+        `${getAPIBase()}/events/${eventId}/items`,
         {
             method: 'POST',
             body: JSON.stringify({ item })
@@ -433,13 +868,13 @@ export async function addEventItem(
  * @returns Promise with event items array
  */
 export async function fetchEventItems(eventId: string): Promise<z.infer<typeof EventItemSchema>[]> {
-    if (IS_DEVELOPMENT) {
+    if (isMockDataEnabled()) {
         return adaptMockEventItems(eventId);
     }
     
     const itemsSchema = z.array(EventItemSchema);
     return apiRequest(
-        `${API_BASE}/events/${eventId}/items`,
+        `${getAPIBase()}/events/${eventId}/items`,
         {},
         itemsSchema
     );
@@ -450,106 +885,195 @@ export async function fetchEventItems(eventId: string): Promise<z.infer<typeof E
  */
 
 /**
- * Validate authentication token
- * @param token - JWT token to validate
- * @returns Promise with user data if token is valid
- */
-export async function validateAuthToken(token: string): Promise<z.infer<typeof UserSchema>> {
-    if (IS_DEVELOPMENT) {
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                if (token === 'demo-token') {
-                    resolve({
-                        id: '1',
-                        name: 'John Doe',
-                        email: 'john@example.com',
-                        avatar: '/default-avatar.png',
-                        role: 'member'
-                    });
-                } else {
-                    reject(new ApiError('Invalid token', 401, 'Your session has expired. Please log in again.'));
-                }
-            }, 500);
-        });
-    }
-    
-    return apiRequest(
-        `${API_BASE}/auth/validate`,
-        {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            }
-        },
-        UserSchema
-    );
-}
-
-/**
  * User login
  * @param email - User email
  * @param password - User password
  * @returns Promise with authentication response
  */
 export async function login(email: string, password: string): Promise<z.infer<typeof AuthResponseSchema>> {
-    if (IS_DEVELOPMENT) {
+    if (isMockDataEnabled()) {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
-                if (email === 'john@example.com' && password === 'password') {
+                if (email === 'demo@bookwork.com' && password === 'password') {
                     resolve({
                         token: 'demo-token',
                         user: {
-                            id: '1',
-                            name: 'John Doe',
-                            email: 'john@example.com',
+                            id: '550e8400-e29b-41d4-a716-446655440000',
+                            name: 'Demo User',
+                            email: 'demo@bookwork.com',
+                            phone: null,
                             avatar: '/default-avatar.png',
-                            role: 'member'
+                            role: 'member' as const,
+                            isActive: true,
+                            lastLoginAt: null,
+                            createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+                            updatedAt: new Date().toISOString(),
+                            joinedDate: null
                         }
                     });
                 } else {
-                    reject(new ApiError('Invalid credentials', 401, 'Invalid email or password. Please try again.'));
+                    reject(new ApiError(new Response(null, { status: 401 }), {
+                        error: 'Invalid credentials',
+                        message: 'Invalid email or password. Please try again.',
+                        code: 'INVALID_CREDENTIALS'
+                    }));
                 }
-            }, 1000);
+            }, TIME_CONSTANTS.LOGIN_SIMULATION_DELAY);
         });
     }
     
-    // Validate input before sending request
+    // Production login
     const loginData = LoginRequestSchema.parse({ email, password });
     
-    return apiRequest(
-        `${API_BASE}/auth/login`,
-        {
-            method: 'POST',
-            body: JSON.stringify(loginData)
+    const response = await getResilientFetch()(`${getAPIBase()}/auth/login`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
         },
-        AuthResponseSchema
-    );
+        body: JSON.stringify(loginData)
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new ApiError(response, errorData);
+    }
+
+    const data = await response.json();
+    
+    // Transform backend response to frontend format
+    return {
+        token: data.data.token,
+        user: {
+            id: data.data.user.id,
+            name: data.data.user.name,
+            email: data.data.user.email,
+            phone: data.data.user.phone,
+            avatar: data.data.user.avatar,
+            role: data.data.user.role,
+            isActive: data.data.user.isActive,
+            lastLoginAt: data.data.user.lastLoginAt,
+            createdAt: data.data.user.createdAt,
+            updatedAt: data.data.user.updatedAt,
+            joinedDate: data.data.user.joinedDate
+        }
+    };
 }
 
 /**
  * User logout
- * @param token - Authentication token to invalidate
+ * @param refreshToken - Refresh token to revoke
  * @returns Promise with logout confirmation
  */
-export async function logout(token: string): Promise<{ success: boolean }> {
-    if (IS_DEVELOPMENT) {
+export async function logout(refreshToken: string): Promise<{ success: boolean }> {
+    if (isMockDataEnabled()) {
         return new Promise(resolve => {
             setTimeout(() => resolve({ success: true }), 200);
         });
     }
     
-    const logoutSchema = z.object({ success: z.boolean() });
-    
-    return apiRequest(
-        `${API_BASE}/auth/logout`,
-        {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            }
+    const response = await getResilientFetch()(`${getAPIBase()}/auth/logout`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
         },
-        logoutSchema
-    );
+        body: JSON.stringify({ refreshToken })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new ApiError(response, errorData);
+    }
+
+    return { success: true };
+}
+
+/**
+ * Validate authentication token
+ * @param token - JWT token to validate
+ * @returns Promise with user data if token is valid
+ */
+export async function validateAuthToken(token: string): Promise<z.infer<typeof UserSchema>> {
+    if (isMockDataEnabled()) {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                if (token === 'demo-token') {
+                    resolve({
+                        id: '550e8400-e29b-41d4-a716-446655440000',
+                        name: 'Demo User',
+                        email: 'demo@bookwork.com',
+                        phone: null,
+                        avatar: '/default-avatar.png',
+                        role: 'member' as const,
+                        isActive: true,
+                        lastLoginAt: null,
+                        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        joinedDate: null
+                    });
+                } else {
+                    reject(new ApiError(new Response(null, { status: 401 }), {
+                        error: 'Invalid token',
+                        message: 'Your session has expired. Please log in again.',
+                        code: 'INVALID_TOKEN'
+                    }));
+                }
+            }, 500);
+        });
+    }
+    
+    const response = await getResilientFetch()(`${getAPIBase()}/auth/validate`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        }
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new ApiError(response, errorData);
+    }
+
+    const data = await response.json();
+    return data.data.user;
+}
+
+/**
+ * Refresh authentication token
+ * @param refreshToken - Refresh token
+ * @returns Promise with new token data
+ */
+export async function refreshAuthToken(refreshToken: string): Promise<{ token: string; expiresAt: string }> {
+    if (isMockDataEnabled()) {
+        return new Promise(resolve => {
+            setTimeout(() => {
+                const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes
+                resolve({
+                    token: 'demo-token-refreshed',
+                    expiresAt
+                });
+            }, 500);
+        });
+    }
+
+    const response = await getResilientFetch()(`${getAPIBase()}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new ApiError(response, errorData);
+    }
+
+    const data = await response.json();
+    return {
+        token: data.data.token,
+        expiresAt: data.data.expiresAt
+    };
 }
 
 /**

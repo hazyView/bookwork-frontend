@@ -1,24 +1,28 @@
-<script>
+<script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { clubMembers, membersLoading, membersError, currentClub } from '$lib/stores.js';
-	import { fetchClubMembers } from '$lib/api.js';
-	import { User, Crown, Mail, Phone } from 'lucide-svelte';
+	import { clubMembers, membersLoading, membersError, currentClub } from '$lib/stores';
+	import type { Member } from '$lib/stores';
+	import { fetchClubMembers } from '$lib/api';
+	import { handleAsyncOperation, handleStoreError } from '$lib/components/StandardErrorHandler';
+	import { Crown, Mail, Calendar, Users } from 'lucide-svelte';
 
-	let unsubscribes = [];
+	let unsubscribes: Array<() => void> = [];
 
 	onMount(async () => {
 		if ($currentClub) {
-			membersLoading.set(true);
-			membersError.set(null);
-			
-			try {
-				const members = await fetchClubMembers($currentClub.id);
-				clubMembers.set(members);
-			} catch (error) {
-				membersError.set(error.message);
-			} finally {
-				membersLoading.set(false);
-			}
+			await handleAsyncOperation(
+				() => fetchClubMembers($currentClub.id),
+				{
+					setLoading: (loading) => membersLoading.set(loading),
+					setError: (error) => membersError.set(error),
+					showToast: false,
+					context: 'load club members'
+				}
+			).then((members) => {
+				if (members) {
+					clubMembers.set(members);
+				}
+			});
 		}
 
 		// Set up store subscriptions with explicit cleanup
@@ -26,10 +30,17 @@
 			currentClub.subscribe(club => {
 				if (club && $clubMembers.length === 0) {
 					// Reload members if club changes and we don't have members
-					fetchClubMembers(club.id).then(members => {
-						clubMembers.set(members);
-					}).catch(error => {
-						membersError.set(error.message);
+					handleAsyncOperation(
+						() => fetchClubMembers(club.id),
+						{
+							setError: (error) => handleStoreError(error, 'club members', (err) => membersError.set(err)),
+							showToast: false,
+							context: 'reload club members'
+						}
+					).then((members) => {
+						if (members) {
+							clubMembers.set(members);
+						}
 					});
 				}
 			})

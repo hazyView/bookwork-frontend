@@ -6,14 +6,6 @@
 
 import { dev } from '$app/environment';
 
-/**
- * Generate cryptographically secure nonce for CSP
- * @returns Base64 encoded nonce
- */
-export function generateNonce(): string {
-	return Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('base64');
-}
-
 // CSP Directive types
 interface CSPDirectives {
 	'default-src'?: string[];
@@ -42,16 +34,16 @@ export const cspDirectives: CSPDirectives = {
 	'default-src': ["'self'"],
 	'script-src': [
 		"'self'",
-		// Only allow eval in development for HMR, but make it explicit
+		// Allow unsafe-inline and unsafe-eval for SvelteKit in both dev and prod
+		"'unsafe-inline'",
 		...(dev ? ["'unsafe-eval'"] : []),
 		// Trusted CDNs for production use
 		'https://cdn.jsdelivr.net',
 	],
 	'style-src': [
 		"'self'",
-		// Use nonces in both dev and production for consistency
-		// Dev will have unsafe-inline as fallback only
-		...(dev ? ["'unsafe-inline'"] : []),
+		// Allow unsafe-inline for SvelteKit SSR styles in both dev and prod
+		"'unsafe-inline'",
 		'https://fonts.googleapis.com',
 	],
 	'img-src': [
@@ -67,16 +59,12 @@ export const cspDirectives: CSPDirectives = {
 	],
 	'connect-src': [
 		"'self'",
-		// Add your API endpoints here when backend is integrated
-		// For development, allow broader connections but still restrict
 		...(dev ? [
-			'ws://localhost:*', 
-			'ws://127.0.0.1:*',
-			'http://localhost:*',
-			'http://127.0.0.1:*'
+			'http://localhost:8000',
+			'ws://localhost:8000'
 		] : [
-			// Production should specify exact API endpoints
-			// 'https://api.bookwork.com'
+			process.env.VITE_API_BASE || 'https://api.bookwork.com',
+			process.env.VITE_WS_BASE || 'wss://ws.bookwork.com'
 		]),
 	],
 	'media-src': ["'self'", 'blob:', 'data:'],
@@ -142,35 +130,14 @@ export const securityHeaders = {
 };
 
 /**
- * Generate CSP header string with nonce support
- * Consistent nonce usage across development and production
+ * Generate CSP header string from directives
  * @param directives CSP directives configuration
- * @param nonce Optional nonce for inline content
  * @returns CSP header string
  */
-export function generateCSPHeader(directives: CSPDirectives = cspDirectives, nonce?: string): string {
-	const updatedDirectives = { ...directives };
-	
-	// Add nonce to style-src in both environments for consistency
-	if (nonce) {
-		updatedDirectives['style-src'] = [
-			"'self'",
-			`'nonce-${nonce}'`,
-			'https://fonts.googleapis.com',
-			// Keep unsafe-inline as fallback in dev only
-			...(dev ? ["'unsafe-inline'"] : []),
-		];
-		
-		// Also add nonce support to script-src if needed
-		updatedDirectives['script-src'] = [
-			"'self'",
-			`'nonce-${nonce}'`,
-			...(dev ? ["'unsafe-eval'"] : []),
-			'https://cdn.jsdelivr.net',
-		];
-	}
-	
-	return Object.entries(updatedDirectives)
+export function generateCSPHeader(directives: CSPDirectives = cspDirectives): string {
+	// For SvelteKit, we ALWAYS use the base directives that include 'unsafe-inline'
+	// This ensures compatibility with SvelteKit SSR
+	return Object.entries(directives)
 		.filter(([_, value]) => value !== undefined && Array.isArray(value))
 		.map(([key, values]) => `${key} ${(values as string[]).join(' ')}`)
 		.join('; ');
@@ -179,13 +146,14 @@ export function generateCSPHeader(directives: CSPDirectives = cspDirectives, non
 /**
  * Apply comprehensive security headers to response
  * Consistent application across all environments
+ * This is the SINGLE SOURCE for CSP generation - no other function should set CSP headers
  * @param headers Response headers object
- * @param nonce Optional nonce for CSP
  * @returns Headers with security headers applied
  */
-export function applySecurityHeaders(headers = new Headers(), nonce?: string): Headers {
-	// Apply CSP with nonce support
-	headers.set('Content-Security-Policy', generateCSPHeader(cspDirectives, nonce));
+export function applySecurityHeaders(headers = new Headers()): Headers {
+	// Apply CSP - this is the ONLY place CSP should be set
+	// Using 'unsafe-inline' for SvelteKit SSR compatibility
+	headers.set('Content-Security-Policy', generateCSPHeader(cspDirectives));
 	
 	// Apply all other security headers
 	Object.entries(securityHeaders).forEach(([key, value]) => {
@@ -195,7 +163,7 @@ export function applySecurityHeaders(headers = new Headers(), nonce?: string): H
 	// Development-specific headers for debugging
 	if (dev) {
 		headers.set('X-Environment', 'development');
-		headers.set('X-Debug-CSP-Nonce', nonce || 'none');
+		headers.set('X-CSP-Source', 'security.ts-single-source');
 	}
 	
 	return headers;
@@ -293,4 +261,62 @@ export function validateCSPConfig(directives: CSPDirectives): {
 	const isSecure = errors.length === 0;
 	
 	return { isSecure, warnings, errors };
+}
+
+/**
+ * Validate that the current CSP header is properly configured for SvelteKit
+ * This helps detect if nonce-based CSP conflicts have been introduced
+ * @param headers Response headers to check
+ * @returns Validation results with SvelteKit-specific checks
+ */
+export function validateSvelteKitCSP(headers: Headers): {
+	isValid: boolean;
+	issues: string[];
+	hasUnsafeInline: boolean;
+	hasNonces: boolean;
+} {
+	const issues: string[] = [];
+	const csp = headers.get('content-security-policy') || '';
+	
+	const hasUnsafeInline = csp.includes("'unsafe-inline'");
+	const hasNonces = /nonce-[A-Za-z0-9+/=]+/.test(csp);
+	
+	// For SvelteKit, we need 'unsafe-inline' and should NOT have nonces
+	if (!hasUnsafeInline) {
+		issues.push("Missing 'unsafe-inline' directive required for SvelteKit SSR");
+	}
+	
+	if (hasNonces) {
+		issues.push("CSP contains nonce directives which conflict with SvelteKit SSR");
+		issues.push("Nonce-based CSP requires HTML transformation not implemented in this setup");
+	}
+	
+	// Check for required style-src unsafe-inline
+	if (!csp.match(/style-src[^;]*'unsafe-inline'/)) {
+		issues.push("style-src missing 'unsafe-inline' required for SvelteKit styles");
+	}
+	
+	// Check for required script-src unsafe-inline (in development)
+	if (dev && !csp.match(/script-src[^;]*'unsafe-inline'/)) {
+		issues.push("script-src missing 'unsafe-inline' required for SvelteKit in development");
+	}
+	
+	const isValid = issues.length === 0;
+	
+	return { isValid, issues, hasUnsafeInline, hasNonces };
+}
+
+export function validateCSPForAPI(generatedCsp: string, apiBaseUrl: string, wsBaseUrl?: string): boolean {
+    const connectSrc = generatedCsp.match(/connect-src ([^;]+)/)?.[1] || '';
+    if (!connectSrc) return false;
+
+    const apiOrigin = new URL(apiBaseUrl).origin;
+    let isValid = connectSrc.includes(apiOrigin) || connectSrc.includes("'self'");
+
+    if (wsBaseUrl) {
+        const wsOrigin = new URL(wsBaseUrl).origin;
+        isValid = isValid && connectSrc.includes(wsOrigin);
+    }
+
+    return isValid;
 }

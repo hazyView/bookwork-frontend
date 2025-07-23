@@ -93,7 +93,8 @@ function logError(error: AppError): void {
 	// - Custom logging endpoint
 	if (!dev) {
 		// Example: sendToLoggingService(error);
-		console.error(`[ERROR ${error.id}] ${error.type} - ${error.statusCode}`);
+		// In production, send to logging service instead of console
+		// console.error(`[ERROR ${error.id}] ${error.type} - ${error.statusCode}`);
 	}
 }
 
@@ -249,7 +250,9 @@ export function setupGlobalErrorHandling(): void {
 				'Unhandled promise rejection',
 				reason
 			);
-			console.error('Unhandled Promise Rejection:', error);
+			if (dev) {
+				console.error('Unhandled Promise Rejection:', error);
+			}
 		});
 		
 		process.on('uncaughtException', (error) => {
@@ -257,7 +260,9 @@ export function setupGlobalErrorHandling(): void {
 				'Uncaught exception',
 				error
 			);
-			console.error('Uncaught Exception:', appError);
+			if (dev) {
+				console.error('Uncaught Exception:', appError);
+			}
 			// In production, you might want to exit gracefully
 			if (!dev) {
 				process.exit(1);

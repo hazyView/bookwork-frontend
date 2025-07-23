@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { user, isAuthenticated, chatOpen } from '$lib/stores.js';
+	import { user, isAuthenticated, chatOpen } from '$lib/stores';
 	import { Menu, X, BookOpen, MessageCircle } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';
 
@@ -52,11 +52,9 @@
 		{ name: 'For Clubs', href: '/clubs', public: false, children: [
 			{ name: 'Club Roster', href: '/clubs/roster' },
 			{ name: 'Schedule', href: '/clubs/schedule' },
-			{ name: 'Availability', href: '/clubs/availability' },
-			{ name: 'Tracking', href: '/clubs/tracking' }
+			{ name: 'Availability', href: '/clubs/availability' }
 		]},
 		{ name: 'For Business', href: '/business', public: true, children: [
-			{ name: 'Services', href: '/business/services' },
 			{ name: 'Community', href: '/business/community' },
 			{ name: 'Company', href: '/business/company' },
 			{ name: 'About Us', href: '/business/about' },

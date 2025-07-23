@@ -143,6 +143,7 @@ export interface ScheduleEvent {
 	location: string;
 	attendees: string[];
 	type: 'meeting' | 'discussion' | 'social' | 'other';
+	book?: string;
 }
 
 export interface MeetingAvailability {
@@ -166,6 +167,8 @@ export interface WebsiteModule {
 	component: string;
 	category: string;
 	settings: Record<string, unknown>;
+	type: string;
+	content: Record<string, any>;
 }
 
 // User authentication stores
@@ -193,7 +196,7 @@ export const eventItems: Writable<Record<string, EventItem[]>> = writable({});
 
 // Website builder stores
 export const builderModules: Writable<WebsiteModule[]> = writable([]);
-export const selectedModule: Writable<WebsiteModule | null> = writable(null);
+export const selectedModule: Writable<string | null> = writable(null);
 
 // Support chat stores
 export const chatOpen: Writable<boolean> = writable(false);

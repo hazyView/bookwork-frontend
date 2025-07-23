@@ -1,8 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
-	import { scheduleEvents, meetingAvailability, user, currentClub } from '$lib/stores.js';
-	import { updateAvailability } from '$lib/api.js';
-	import { formatDate, formatTime } from '$lib/utils.js';
+	import { scheduleEvents, meetingAvailability, user, currentClub } from '$lib/stores';
+	import { updateAvailability } from '$lib/api';
+	import { formatDate, formatTime } from '$lib/utils';
 	import { Calendar, Clock, MapPin, Users, Check, X, User } from 'lucide-svelte';
 
 	let loading = false;

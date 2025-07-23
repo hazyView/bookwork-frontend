@@ -3,6 +3,7 @@
 	import { scheduleEvents, eventItems, user } from '$lib/stores.ts';
 	import { addEventItem, fetchEventItems, fetchScheduleEvents } from '$lib/api.ts';
 	import { isDuplicateItem, formatDate, formatTime } from '$lib/utils.ts';
+	import { validateItem } from '$lib/validation';
 	import { Calendar, Clock, MapPin, Plus, AlertCircle, Package, Trash2, User } from 'lucide-svelte';
 
 	let selectedEventId = '';
@@ -39,7 +40,9 @@
 						notes: item.notes
 					}));
 				} catch (err) {
-					console.warn(`Failed to load items for event ${event.id}:`, err);
+					if (import.meta.env.DEV) {
+						console.warn(`Failed to load items for event ${event.id}:`, err);
+					}
 					items[event.id] = [];
 				}
 			}
@@ -52,7 +55,9 @@
 			}
 		} catch (err) {
 			error = 'Failed to load event data';
-			console.error('Error loading tracking data:', err);
+			if (import.meta.env.DEV) {
+				console.error('Error loading tracking data:', err);
+			}
 		}
 	});
 
@@ -66,22 +71,6 @@
 			'5': 'David Brown'
 		};
 		return memberNames[userId] || 'Unknown Member';
-	}
-
-	function validateItemForm() {
-		const errors = {};
-		
-		if (!newItemName?.trim()) {
-			errors.name = 'Item name is required';
-		} else if (newItemName.length > 100) {
-			errors.name = 'Item name must be less than 100 characters';
-		}
-		
-		if (!newItemBringer?.trim()) {
-			errors.bringer = 'Please specify who will bring this item';
-		}
-		
-		return errors;
 	}
 
 	function getUpcomingEvents() {
@@ -116,20 +105,34 @@
 	}
 
 	async function addItem() {
-		formErrors = validateItemForm();
+		// Use centralized validation
+		const itemData = {
+			name: newItemName,
+			bringer: newItemBringer,
+			description: ''
+		};
 		
-		if (Object.keys(formErrors).length > 0) {
+		const validation = validateItem(itemData);
+		
+		if (!validation.isValid) {
+			// Convert array errors to single string for each field
+			formErrors = Object.fromEntries(
+				Object.entries(validation.errors).map(([key, errors]) => [key, errors[0]])
+			);
 			return;
 		}
+		
+		// Clear any existing errors
+		formErrors = {};
 
 		if (!selectedEventId) {
-			error = 'Please select an event first';
+			formErrors.general = 'Please select an event first';
 			return;
 		}
 
 		// Check for duplicates before adding
 		const items = getItemsForEvent(selectedEventId);
-		if (isDuplicateItem(items.map(item => ({ name: item.name })), newItemName.trim())) {
+		if (isDuplicateItem(items.map(item => ({ name: item.name })), validation.data.name)) {
 			formErrors.name = 'This item is already on the list. Please choose a different item.';
 			return;
 		}
@@ -138,11 +141,14 @@
 		error = null;
 
 		try {
+			// Use sanitized data from validation
+			const sanitizedData = validation.data;
+			
 			const newItem = {
-				name: newItemName.trim(),
+				name: sanitizedData.name,
 				category: 'Other',
 				assignedTo: $user.id,
-				notes: `Brought by: ${newItemBringer.trim() || $user.name}`
+				notes: `Brought by: ${sanitizedData.bringer}`
 			};
 
 			const addedItem = await addEventItem(selectedEventId, newItem);
@@ -155,7 +161,7 @@
 					name: addedItem.name,
 					bringer: { 
 						id: $user.id, 
-						name: newItemBringer.trim() || $user.name 
+						name: sanitizedData.bringer
 					},
 					addedAt: new Date().toISOString(),
 					status: addedItem.status,

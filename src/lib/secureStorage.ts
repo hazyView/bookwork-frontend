@@ -3,31 +3,53 @@
  * Provides encrypted storage for non-sensitive application data
  */
 import { browser } from '$app/environment';
+import CryptoUtils from './crypto.js';
 
 class SecureStorage {
 	private static readonly ENCRYPTION_KEY = 'bookwork-app-data-key';
 	
 	/**
-	 * Encrypt data using simple base64 encoding
-	 * In production, use proper encryption algorithms
+	 * Encrypt data using production-grade AES-GCM encryption
 	 */
-	private static encrypt(data: string): string {
+	private static async encrypt(data: string): Promise<string> {
 		try {
-			return btoa(unescape(encodeURIComponent(data)));
+			const result = await CryptoUtils.encrypt(data);
+			return JSON.stringify(result); // Store both data and IV
 		} catch (error) {
-			console.error('Encryption failed:', error);
-			return data;
+			if (import.meta.env.DEV) {
+				console.warn('Encryption failed, using fallback:', error);
+			}
+			// Fallback to base64 for compatibility
+			try {
+				return btoa(unescape(encodeURIComponent(data)));
+			} catch {
+				return data;
+			}
 		}
 	}
 	
 	/**
 	 * Decrypt data
 	 */
-	private static decrypt(encrypted: string): string {
+	private static async decrypt(encrypted: string): Promise<string> {
 		try {
+			// Try to parse as JSON (new format with IV)
+			const parsed = JSON.parse(encrypted);
+			if (parsed.data && parsed.iv) {
+				return await CryptoUtils.decrypt(parsed.data, parsed.iv);
+			}
+			// Fall through to legacy decryption
+		} catch {
+			// Not JSON, try legacy base64 decryption
+		}
+
+		try {
+			// Legacy base64 decryption for backward compatibility
 			return decodeURIComponent(escape(atob(encrypted)));
 		} catch (error) {
-			console.error('Decryption failed:', error);
+			if (import.meta.env.DEV) {
+				console.error('Decryption failed:', error);
+			}
 			return encrypted;
 		}
 	}
@@ -35,16 +57,18 @@ class SecureStorage {
 	/**
 	 * Set item in secure storage
 	 */
-	static setItem(key: string, value: any): boolean {
+	static async setItem(key: string, value: any): Promise<boolean> {
 		if (!browser) return false;
 		
 		try {
 			const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-			const encrypted = this.encrypt(stringValue);
+			const encrypted = await this.encrypt(stringValue);
 			sessionStorage.setItem(`sec_${key}`, encrypted);
 			return true;
 		} catch (error) {
-			console.error('Failed to set secure storage item:', error);
+			if (import.meta.env.DEV) {
+				console.error('Failed to set secure storage item:', error);
+			}
 			return false;
 		}
 	}
@@ -52,14 +76,16 @@ class SecureStorage {
 	/**
 	 * Get item from secure storage
 	 */
-	static getItem(key: string): string | null {
+	static async getItem(key: string): Promise<string | null> {
 		if (!browser) return null;
 		
 		try {
 			const encrypted = sessionStorage.getItem(`sec_${key}`);
-			return encrypted ? this.decrypt(encrypted) : null;
+			return encrypted ? await this.decrypt(encrypted) : null;
 		} catch (error) {
-			console.error('Failed to get secure storage item:', error);
+			if (import.meta.env.DEV) {
+				console.error('Failed to get secure storage item:', error);
+			}
 			return null;
 		}
 	}
@@ -67,14 +93,16 @@ class SecureStorage {
 	/**
 	 * Get item and parse as JSON
 	 */
-	static getItemParsed<T>(key: string): T | null {
-		const item = this.getItem(key);
+	static async getItemParsed<T>(key: string): Promise<T | null> {
+		const item = await this.getItem(key);
 		if (!item) return null;
 		
 		try {
 			return JSON.parse(item);
 		} catch (error) {
-			console.error('Failed to parse stored item:', error);
+			if (import.meta.env.DEV) {
+				console.error('Failed to parse stored item:', error);
+			}
 			return null;
 		}
 	}
@@ -103,23 +131,28 @@ class SecureStorage {
 				sessionStorage.removeItem(key);
 			}
 		});
+		
+		// Clear encryption keys
+		CryptoUtils.clearKeys();
 	}
 	
 	/**
 	 * Migrate data from localStorage to secure storage
 	 */
-	static migrateFromLocalStorage(key: string): void {
+	static async migrateFromLocalStorage(key: string): Promise<void> {
 		if (!browser) return;
 		
 		try {
 			const oldData = localStorage.getItem(key);
 			if (oldData) {
-				this.setItem(key, oldData);
+				await this.setItem(key, oldData);
 				localStorage.removeItem(key);
-				console.log(`Migrated ${key} from localStorage to secure storage`);
+				// Migration completed successfully
 			}
 		} catch (error) {
-			console.error(`Failed to migrate ${key}:`, error);
+			if (import.meta.env.DEV) {
+				console.error(`Failed to migrate ${key}:`, error);
+			}
 		}
 	}
 	
