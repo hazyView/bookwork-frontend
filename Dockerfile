@@ -29,19 +29,22 @@ RUN adduser -S sveltekit -u 1001
 # Copy built application
 COPY --from=builder --chown=sveltekit:nodejs /app/build ./build
 COPY --from=builder --chown=sveltekit:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=sveltekit:nodejs /app/package-lock.json ./package-lock.json
+COPY --from=builder --chown=sveltekit:nodejs /app/node_modules ./node_modules
+
 
 # Switch to non-root user
 USER sveltekit
 
 # Expose the port the app runs on
-EXPOSE 3000
+EXPOSE 80
 
 # Environment variable for the Node server
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=80
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
 # Command to start the application using adapter-node
-CMD ["node", "build"]%
+CMD ["node", "build/index.js"]
