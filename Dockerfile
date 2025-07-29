@@ -11,6 +11,9 @@ RUN npm ci --legacy-peer-deps
 # Copy the rest of the source code
 COPY . .
 
+#Mock data env for build
+ENV VITE_ENABLE_MOCK_DATA=true
+
 # Build the SvelteKit app for production using adapter-node
 RUN npm run build
 
@@ -41,7 +44,6 @@ EXPOSE 80
 
 # Environment variable for the Node server
 ENV NODE_ENV=production
-ENV VITE_ENABLE_MOCK_DATA=true
 ENV PORT=80
 
 # Use dumb-init to handle signals properly
