@@ -15,7 +15,8 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:all": "npm run test && npm run test:e2e",
-    "security:audit": "npm audit --audit-level moderate"
+    "security:audit": "npm audit --audit-level moderate",
+    "lint": "eslint . --ext .ts,.svelte --fix"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.1",
@@ -27,6 +28,7 @@
     "@testing-library/svelte": "^5.2.8",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/uuid": "^10.0.0",
+    "eslint": "^8.57.1",
     "jsdom": "^26.1.0",
     "playwright": "^1.54.1",
     "svelte": "^5.0.0",
