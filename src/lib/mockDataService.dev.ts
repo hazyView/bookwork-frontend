@@ -4,6 +4,7 @@
  * Production builds will exclude this via Vite tree-shaking
  */
 
+import { MockClubMembersByClub } from './mockData';
 import type { IMockDataService, MockDataServiceConfig } from './mockDataService.types';
 
 /**
@@ -24,9 +25,9 @@ class DevMockDataService implements IMockDataService {
         return data;
     }
 
-    async getClubMembers(): Promise<any[]> {
+    async getClubMembers(clubId: string): Promise<any[]> {
         const { mockClubMembers } = await import('./mockData');
-        return this.delay([...mockClubMembers]);
+        return this.delay([...MockClubMembersByClub[clubId] || []]);
     }
 
     async getScheduleEvents(): Promise<any[]> {

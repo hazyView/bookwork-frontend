@@ -9,7 +9,7 @@ export interface MockDataServiceConfig {
 }
 
 export interface IMockDataService {
-    getClubMembers(): Promise<any[]>;
+    getClubMembers(clubId: string): Promise<any[]>;
     getScheduleEvents(): Promise<any[]>;
     getEventItems(eventId: string): Promise<any[]>;
     getMeetingAvailability(eventId: string): Promise<Record<string, any>>;

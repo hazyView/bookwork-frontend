@@ -56,8 +56,445 @@ export const mockClubMembers: ClubMember[] = [
 		avatar: '/default-avatar.png',
 		joinedDate: '2023-01-25',
 		booksRead: 10
-	}
+	},
+	{
+    id: '6',
+    name: 'Del Lease',
+    email: 'dlease5@de.vu',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-02-15',
+    booksRead: 7
+  },
+  {
+    id: '7',
+    name: 'Brittan Ciobutaro',
+    email: 'bciobutaro6@yahoo.co.jp',
+    phone: '(111)111-1111',
+    role: 'Club Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-05-11',
+    booksRead: 63924
+  },
+  {
+    id: '8',
+    name: 'Barbette Renzullo',
+    email: 'brenzullo7@com.com',
+    phone: '(111)111-1111',
+    role: 'Co-Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-10-13',
+    booksRead: 24
+  },
+  {
+    id: '9',
+    name: 'Bonnie Littrell',
+    email: 'blittrell8@purevolume.com',
+    phone: '(111)111-1111',
+    role: 'Club Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-04-29',
+    booksRead: 6780
+  },
+  {
+    id: '10',
+    name: 'Shawn Chatel',
+    email: 'schatel9@jiathis.com',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-04-18',
+    booksRead: 13
+  },
+  {
+    id: '11',
+    name: 'Emmott Wigzell',
+    email: 'ewigzella@baidu.com',
+    phone: '(111)111-1111',
+    role: 'Co-Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-11-30',
+    booksRead: 42
+  },
+  {
+    id: '12',
+    name: 'Nicolais Kershow',
+    email: 'nkershowb@jigsy.com',
+    phone: '(111)111-1111',
+    role: 'Club Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-07-21',
+    booksRead: 41
+  },
+  {
+    id: '13',
+    name: 'Edee Howbrook',
+    email: 'ehowbrookc@google.fr',
+    phone: '(111)111-1111',
+    role: 'Co-Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-09-24',
+    booksRead: 70108
+  },
+  {
+    id: '14',
+    name: 'Julie Drewell',
+    email: 'jdrewelld@unblog.fr',
+    phone: '(111)111-1111',
+    role: 'Club Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-07-16',
+    booksRead: 8566
+  },
+  {
+    id: '15',
+    name: 'Phylys Sympson',
+    email: 'psympsone@github.com',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-06-04',
+    booksRead: 4842
+  },
+  {
+    id: '16',
+    name: 'Roobbie Anfossi',
+    email: 'ranfossif@ameblo.jp',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-02-24',
+    booksRead: 3
+  },
+  {
+    id: '17',
+    name: 'Corina Grieves',
+    email: 'cgrievesg@cnet.com',
+    phone: '(111)111-1111',
+    role: 'Club Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-02-08',
+    booksRead: 4
+  },
+  {
+    id: '18',
+    name: 'Rachael Ellum',
+    email: 'rellumh@cbslocal.com',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-10-15',
+    booksRead: 9341
+  },
+  {
+    id: '19',
+    name: 'Kevan Rosin',
+    email: 'krosini@gravatar.com',
+    phone: '(111)111-1111',
+    role: 'Co-Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-10-14',
+    booksRead: 0
+  },
+  {
+    id: '20',
+    name: 'Dyanne Whaley',
+    email: 'dwhaleyj@spiegel.de',
+    phone: '(111)111-1111',
+    role: 'Co-Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-07-06',
+    booksRead: 82695
+  },
+  {
+    id: '21',
+    name: 'Vance Beauchamp',
+    email: 'vbeauchampk@google.es',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-09-02',
+    booksRead: 50
+  },
+  {
+    id: '22',
+    name: 'Billye Mudie',
+    email: 'bmudiel@alexa.com',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-02-27',
+    booksRead: 6
+  },
+  {
+    id: '23',
+    name: 'Colline Dorkins',
+    email: 'cdorkinsm@mac.com',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-12-23',
+    booksRead: 95
+  },
+  {
+    id: '24',
+    name: 'Hester Del Checolo',
+    email: 'hdeln@jimdo.com',
+    phone: '(111)111-1111',
+    role: 'Club Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-11-28',
+    booksRead: 86819
+  },
+  {
+    id: '25',
+    name: 'Fleurette Brownlow',
+    email: 'fbrownlowo@miitbeian.gov.cn',
+    phone: '(111)111-1111',
+    role: 'Co-Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-01-07',
+    booksRead: 256
+  },
+  {
+    id: '26',
+    name: 'Rowe Harbidge',
+    email: 'rharbidgep@printfriendly.com',
+    phone: '(111)111-1111',
+    role: 'Club Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-10-27',
+    booksRead: 658
+  },
+  {
+    id: '27',
+    name: 'Linn Ledbury',
+    email: 'lledburyq@w3.org',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-11-05',
+    booksRead: 33498
+  },
+  {
+    id: '28',
+    name: 'Maggee O\'Kennedy',
+    email: 'mokennedyr@creativecommons.org',
+    phone: '(111)111-1111',
+    role: 'Co-Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-12-05',
+    booksRead: 23216
+  },
+  {
+    id: '29',
+    name: 'Floris Aplin',
+    email: 'faplins@eepurl.com',
+    phone: '(111)111-1111',
+    role: 'Co-Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-08-27',
+    booksRead: 0
+  },
+  {
+    id: '30',
+    name: 'Ilene Ellacombe',
+    email: 'iellacombet@livejournal.com',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-01-25',
+    booksRead: 656
+  },
+  {
+    id: '31',
+    name: 'Lorilee Tolworth',
+    email: 'ltolworthu@skype.com',
+    phone: '(111)111-1111',
+    role: 'Club Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-08-25',
+    booksRead: 5671
+  },
+  {
+    id: '32',
+    name: 'Annetta Pietraszek',
+    email: 'apietraszekv@pen.io',
+    phone: '(111)111-1111',
+    role: 'Club Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-05-26',
+    booksRead: 7237
+  },
+  {
+    id: '33',
+    name: 'Arden Scottrell',
+    email: 'ascottrellw@xing.com',
+    phone: '(111)111-1111',
+    role: 'Club Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-10-11',
+    booksRead: 93409
+  },
+  {
+    id: '34',
+    name: 'Yorgo Knowles',
+    email: 'yknowlesx@linkedin.com',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-09-26',
+    booksRead: 287
+  },
+  {
+    id: '35',
+    name: 'Sherrie Sharple',
+    email: 'ssharpley@discuz.net',
+    phone: '(111)111-1111',
+    role: 'Club Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-05-09',
+    booksRead: 7513
+  },
+  {
+    id: '36',
+    name: 'Reese Height',
+    email: 'rheightz@dailymotion.com',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-09-07',
+    booksRead: 44303
+  },
+  {
+    id: '37',
+    name: 'Hewitt Tuting',
+    email: 'htuting10@addthis.com',
+    phone: '(111)111-1111',
+    role: 'Club Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-07-04',
+    booksRead: 0
+  },
+  {
+    id: '38',
+    name: 'Ella Peach',
+    email: 'epeach11@jiathis.com',
+    phone: '(111)111-1111',
+    role: 'Co-Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2024-12-18',
+    booksRead: 5
+  },
+  {
+    id: '39',
+    name: 'Den Fergie',
+    email: 'dfergie12@bloomberg.com',
+    phone: '(111)111-1111',
+    role: 'Co-Lead',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-05-17',
+    booksRead: 1980
+  },
+  {
+    id: '40',
+    name: 'Estell Benyon',
+    email: 'ebenyon13@nature.com',
+    phone: '(111)111-1111',
+    role: 'Member',
+    avatar: '/default-avatar.png',
+    joinedDate: '2025-04-16',
+    booksRead: 29
+  },
+  {
+	id: '41',
+	name: 'Demo User',
+	email: 'demo@bookwork.com',
+	phone: '(111)111-1111',
+	role: 'Co-Lead',
+	avatar: '/default-avatar.png',
+	joinedDate: '2025-04-16',
+	booksRead: 1000
+  }
 ];
+
+//Mock Club with members
+export const MockClubMembersByClub: Record<string, ClubMember[]> = {
+	'club-1': [
+		{
+			id: '1',
+			name: 'John Doe',
+			email: 'johndoe@example.com',
+			phone: '(111)111-1111',
+			role: 'Member',
+			avatar: '/default-avatar.png',
+			joinedDate: '2024-01-01',
+			booksRead: 5
+		},
+		{
+			id: '2',
+			name: 'Jane Smith',
+			email: 'janesmith@example.com',
+			phone: '(111)111-1111',
+			role: 'Member',
+			avatar: '/default-avatar.png',
+			joinedDate: '2024-01-02',
+			booksRead: 10
+		},
+		{
+    		id: '21',
+    		name: 'Vance Beauchamp',
+   			email: 'vbeauchampk@google.es',
+    		phone: '(111)111-1111',
+    		role: 'Member',
+    		avatar: '/default-avatar.png',
+    		joinedDate: '2024-09-02',
+    		booksRead: 50
+		},
+		{
+			id: '22',
+			name: 'Billye Mudie',
+			email: 'bmudiel@alexa.com',
+			phone: '(111)111-1111',
+			role: 'Member',
+			avatar: '/default-avatar.png',
+			joinedDate: '2025-02-27',
+			booksRead: 6
+		},
+		{
+			id: '23',
+			name: 'Colline Dorkins',
+			email: 'cdorkinsm@mac.com',
+			phone: '(111)111-1111',
+			role: 'Member',
+			avatar: '/default-avatar.png',
+			joinedDate: '2024-12-23',
+			booksRead: 95
+		},
+		{
+			id: '24',
+			name: 'Hester Del Checolo',
+			email: 'hdeln@jimdo.com',
+			phone: '(111)111-1111',
+			role: 'Club Lead',
+			avatar: '/default-avatar.png',
+			joinedDate: '2024-11-28',
+			booksRead: 86819
+		},
+		{
+			id: '41',
+			name: 'Demo User',
+			email: 'demo@bookwork.com',
+			phone: '(111)111-1111',
+			role: 'Co-Lead',
+			avatar: '/default-avatar.png',
+			joinedDate: '2025-04-16',
+			booksRead: 1000
+		}
+		
+	]
+};
 
 // Mock schedule events data
 export const mockScheduleEvents: (ScheduleEvent & { book?: string; attendees: string[] })[] = [
@@ -199,7 +636,7 @@ export const mockUserClubs: (Club & { isOwner: boolean })[] = [
 		id: 'club-1',
 		name: 'Downtown Book Club',
 		description: 'A friendly neighborhood book club meeting every Tuesday',
-		memberCount: 5,
+		memberCount: 7,
 		createdAt: '2023-01-01',
 		isOwner: true
 	}
@@ -307,3 +744,5 @@ export const mockData = {
 	chatMessages: mockChatMessages,
 	notifications: mockNotifications
 };
+
+
