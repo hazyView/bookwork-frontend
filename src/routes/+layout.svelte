@@ -1,19 +1,17 @@
 <script>
 	import { onMount } from 'svelte';
-	import { writable } from 'svelte/store';
+	import { writable, get } from 'svelte/store';
 	import '../app.css';
 	import ToastContainer from '$lib/components/ToastContainer.svelte';
-	import { handleStoreError, safeOperation } from '$lib/components/StandardErrorHandler';
+	import { handleStoreError } from '$lib/components/StandardErrorHandler';
 	import { TIME_CONSTANTS } from '$lib/constants';
-	import { isDevelopment, isProduction, isMockDataEnabled } from '$lib/env';
+	import { isDevelopment, isMockDataEnabled } from '$lib/env';
 
 	// Simple reactive stores to avoid import issues
 	let user = writable(null);
 	let isAuthenticated = writable(false);
 
 	let loading = true;
-	let currentUser = null;
-	let authenticated = false;
 
 	// Force loading to false after a timeout as a failsafe
 	setTimeout(() => {
@@ -22,151 +20,85 @@
 		}
 	}, TIME_CONSTANTS.LAYOUT_UPDATE_INTERVAL);
 
-	// Subscribe to stores
-	user.subscribe(value => {
-		currentUser = value;
-	});
-	
-	isAuthenticated.subscribe(value => {
-		authenticated = value;
-	});
-
-	onMount(async () => {
+	// Handles the real authentication flow by validating the token
+	// and setting the user state accordingly. This is used for production
+	// and for development when mock data is disabled.
+	async function initializeRealSession() {
 		try {
-			// Debug: Check environment variables
-			const envDebug = {
-				isDev: isDevelopment(),
-				mockEnabled: isMockDataEnabled(),
-				envVars: import.meta.env
-			};
-			console.log('Environment check:', envDebug);
-			
-			// Check for production mode - but allow fallback for development
-			if (!isDevelopment()) {
-				// In production, validate existing token if any
-				const { AuthService } = await import('$lib/auth');
-				
-				try {
-					const isValid = await AuthService.validateToken();
-					
-					if (isValid) {
-						// User is authenticated with valid token
-						const authState = await import('$lib/auth').then(m => m.authStore);
-						authState.subscribe(async (state) => {
-							if (state.user) {
-								user.set(state.user);
-								isAuthenticated.set(true);
-								
-								// Set a default club for testing
-								safeOperation(async () => {
-									const { currentClub } = await import('$lib/stores');
-									currentClub.set({
-										id: '9e1db325-8d5a-4b1b-be9f-d97fe2f59ae5',
-										name: 'Test Book Club',
-										description: 'A test club for production testing'
-									});
-								}, undefined, (storeError) => {
-									// Fail silently in production - error logged in development by safeOperation
-								})();
-							}
-							// Always set loading to false after auth processing
-							loading = false;
-						});
-					} else {
-						// No valid token, user needs to login
-						user.set(null);
-						isAuthenticated.set(false);
-						loading = false;
-					}
-				} catch (authError) {
-					// Authentication validation failed, treat as unauthenticated
-					console.warn('Auth validation failed:', authError);
+			const { AuthService, authStore } = await import('$lib/auth');
+			const isValid = await AuthService.validateToken();
+
+			if (isValid) {
+				// Use get() for a one-time read of the store state after validation.
+				const state = get(authStore);
+				if (state.user) {
+					user.set(state.user);
+					isAuthenticated.set(true);
+				} else {
+					// Token is valid but no user in store; treat as unauthenticated.
 					user.set(null);
 					isAuthenticated.set(false);
-					loading = false;
 				}
 			} else {
-				// Development mode - prioritize mock data if enabled, otherwise check for valid token
-				const mockDataEnabled = isMockDataEnabled();
-				console.log('Mock data enabled:', mockDataEnabled); // Debug log
-				console.log('Environment vars:', import.meta.env); // Debug log
-				
-				// Try mock data first if enabled, or if we're in dev mode and no real backend
-				const shouldUseMockData = mockDataEnabled || 
-					(isDevelopment() && (import.meta.env.VITE_ENABLE_MOCK_DATA === 'true' || import.meta.env.VITE_ENABLE_MOCK_DATA === true));
-				
-				if (shouldUseMockData) {
-					console.log('Using mock authentication'); // Debug log
-					// Use mock authentication when mock data is enabled
-					const mockUser = {
-						id: 'dev-user-123',
-						name: 'Development User',
-						email: 'dev@bookwork.com',
-						role: 'admin',
-						isActive: true,
-						createdAt: new Date().toISOString()
-					};
-					
-					user.set(mockUser);
-					isAuthenticated.set(true);
-					loading = false;
-				} else {
-					// Try real authentication
-					const { AuthService } = await import('$lib/auth');
-					
-					try {
-						const isValid = await AuthService.validateToken();
-						
-						if (isValid) {
-							// Use real authentication if available
-							const authState = await import('$lib/auth').then(m => m.authStore);
-							authState.subscribe(async (state) => {
-								if (state.user) {
-									user.set(state.user);
-									isAuthenticated.set(true);
-								}
-								loading = false;
-							});
-						} else {
-							// No authentication available
-							user.set(null);
-							isAuthenticated.set(false);
-							loading = false;
-						}
-					} catch (authError) {
-						// Authentication validation failed, treat as unauthenticated
-						console.warn('Auth validation failed:', authError);
-						user.set(null);
-						isAuthenticated.set(false);
-						loading = false;
-					}
-				}
+				user.set(null);
+				isAuthenticated.set(false);
 			}
-			
-			// Set a default club for development when mock data is enabled
+		} catch (authError) {
+			console.warn('Authentication validation failed:', authError);
+			user.set(null);
+			isAuthenticated.set(false);
+		}
+	}
+
+	// Sets up a mock user and club for development and testing purposes.
+	async function setupMockState() {
+		console.log('Using mock authentication and data');
+		const mockUser = {
+			id: 'dev-user-123',
+			name: 'Development User',
+			email: 'dev@bookwork.com',
+			role: 'admin',
+			isActive: true,
+			createdAt: new Date().toISOString()
+		};
+		user.set(mockUser);
+		isAuthenticated.set(true);
+
+		// Set a default club for development/mock mode
+		try {
+			const { currentClub } = await import('$lib/stores');
+			currentClub.set({
+				id: '9e1db325-8d5a-4b1b-be9f-d97fe2f59ae5',
+				name: 'Test Book Club',
+				description: 'A test club for development'
+			});
+		} catch (storeError) {
+			console.warn('Could not set default club for mock user:', storeError);
+		}
+	}
+
+	onMount(async () => {
+		loading = true;
+		try {
+			console.log('Environment check:', {
+				isDev: isDevelopment(),
+				mockEnabled: isMockDataEnabled()
+			});
+
+			// This is the single, clear decision point for how the app should initialize.
 			if (isMockDataEnabled()) {
-				try {
-					const { currentClub } = await import('$lib/stores');
-					currentClub.set({
-						id: '9e1db325-8d5a-4b1b-be9f-d97fe2f59ae5',
-						name: 'Test Book Club',
-						description: 'A test club for development'
-					});
-				} catch (storeError) {
-					// Only log warnings in development
-					if (isDevelopment()) {
-						console.warn('Could not set default club:', storeError);
-					}
-				}
+				await setupMockState();
+			} else {
+				await initializeRealSession();
 			}
 		} catch (error) {
 			// Handle authentication initialization errors
 			handleStoreError(error, 'authentication initialization');
-			
-			// Ensure loading is false even on error
-			loading = false;
 			user.set(null);
 			isAuthenticated.set(false);
+		} finally {
+			// This ensures the loading screen is always removed, even if errors occur.
+			loading = false;
 		}
 	});
 
@@ -197,7 +129,7 @@
 		<div class="spinner"></div>
 		<p>Loading BookWork...</p>
 	</div>
-{:else if !authenticated}
+{:else if !$isAuthenticated}
 	<div class="auth-screen">
 		<div class="auth-container">
 			<h1>BookWork</h1>
@@ -218,7 +150,7 @@
 			<div class="nav-content">
 				<h1>BookWork</h1>
 				<div class="nav-actions">
-					<span class="user-name">Welcome, {currentUser?.name}</span>
+					<span class="user-name">Welcome, {$user?.name}</span>
 					<button class="btn btn-outline" onclick={handleLogout}>
 						Logout
 					</button>
