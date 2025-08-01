@@ -1,5 +1,6 @@
 <script>
-	import { onMount } from 'svelte';
+import { onMount } from 'svelte';
+import { get } from 'svelte/store';
 	import { scheduleEvents, eventItems, user } from '$lib/stores.ts';
 	import { addEventItem, fetchEventItems, fetchScheduleEvents } from '$lib/api.ts';
 	import { isDuplicateItem, formatDate, formatTime } from '$lib/utils.ts';
@@ -14,52 +15,55 @@
 	let duplicateWarning = '';
 	let formErrors = {};
 
-	onMount(async () => {
-		try {
-			// Load events from centralized data source
-			if ($scheduleEvents.length === 0) {
-				const events = await fetchScheduleEvents('club-1');
+onMount(async () => {
+	try {
+		// Load events from centralized data source
+		if (get(scheduleEvents).length === 0) {
+			const club = get(currentClub);
+			if (club) {
+				const events = await fetchScheduleEvents(club.id);
 				scheduleEvents.set(events);
 			}
+		}
 
-			// Initialize event items using API
-			const items = {};
-			for (const event of $scheduleEvents) {
-				try {
-					const eventItemsData = await fetchEventItems(event.id);
-					items[event.id] = eventItemsData.map(item => ({
-						id: item.id,
-						name: item.name,
-						bringer: { 
-							id: item.assignedTo, 
-							name: getMemberName(item.assignedTo) 
-						},
-						addedAt: new Date().toISOString(),
-						status: item.status,
-						category: item.category,
-						notes: item.notes
-					}));
-				} catch (err) {
-					if (import.meta.env.DEV) {
-						console.warn(`Failed to load items for event ${event.id}:`, err);
-					}
-					items[event.id] = [];
+		// Initialize event items using API
+		const items = {};
+		for (const event of get(scheduleEvents)) {
+			try {
+				const eventItemsData = await fetchEventItems(event.id);
+				items[event.id] = eventItemsData.map(item => ({
+					id: item.id,
+					name: item.name,
+					bringer: { 
+						id: item.assignedTo, 
+						name: getMemberName(item.assignedTo) 
+					},
+					addedAt: new Date().toISOString(),
+					status: item.status,
+					category: item.category,
+					notes: item.notes
+				}));
+			} catch (err) {
+				if (import.meta.env.DEV) {
+					console.warn(`Failed to load items for event ${event.id}:`, err);
 				}
-			}
-			eventItems.set(items);
-
-			// Auto-select the first upcoming event
-			const upcomingEvents = getUpcomingEvents();
-			if (upcomingEvents.length > 0) {
-				selectedEventId = upcomingEvents[0].id;
-			}
-		} catch (err) {
-			error = 'Failed to load event data';
-			if (import.meta.env.DEV) {
-				console.error('Error loading tracking data:', err);
+				items[event.id] = [];
 			}
 		}
-	});
+		eventItems.set(items);
+
+		// Auto-select the first upcoming event
+		const upcomingEvents = getUpcomingEvents();
+		if (upcomingEvents.length > 0) {
+			selectedEventId = upcomingEvents[0].id;
+		}
+	} catch (err) {
+		error = 'Failed to load event data';
+		if (import.meta.env.DEV) {
+			console.error('Error loading tracking data:', err);
+		}
+	}
+});
 
 	function getMemberName(userId) {
 		// Simple mapping for demo purposes

@@ -7,9 +7,18 @@
 	import { handleAsyncOperation } from '$lib/components/StandardErrorHandler';
 	import { validateEvent } from '$lib/validation';
 	import { TIME_CONSTANTS } from '$lib/constants';
+	import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin, BookOpen, Plus } from 'lucide-svelte';
+	import { mockEventItems } from '$lib/mockData';
+
+	// Defensive fallback for event items in modal
+	$: selectedEventItems = selectedEvent ? (mockEventItems[selectedEvent.id] || []) : [];
 
 	let currentDate = new Date();
 	let showNewEventModal = false;
+	let showEventModal = false;
+	let showAddEventModal = false;
+	let selectedDate: Date | null = null;
+	let selectedEvent: ScheduleEvent | null = null;
 	let loading = false;
 	let newEvent = {
 		title: '',
@@ -173,6 +182,15 @@
 		}, TIME_CONSTANTS.API_TIMEOUT);
 	}
 
+	function formatDate(date: string | Date): string {
+	const d = typeof date === 'string' ? new Date(date) : date;
+	return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+	}
+
+	function formatTime(date: Date): string {
+	return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+	}
+
 	const monthNames = [
 		'January', 'February', 'March', 'April', 'May', 'June',
 		'July', 'August', 'September', 'October', 'November', 'December'
@@ -299,7 +317,7 @@
 
 								<div class="event-footer">
 									<span class="attendee-count">
-										{event.attendees.length} attending
+										 {(event.attendees ? event.attendees.length : 0)} attending
 									</span>
 									<button 
 										class="btn btn-outline btn-sm"
@@ -384,9 +402,24 @@
 					<p class="event-description-full">{selectedEvent.description}</p>
 				{/if}
 				<div class="attendees-section">
-					<h3>Attendees ({selectedEvent.attendees.length})</h3>
+					<h3>Attendees ({selectedEvent.attendees ? selectedEvent.attendees.length : 0})</h3>
 					<p>Members who will be attending this event.</p>
 				</div>
+				<!-- Event Items Section -->
+				{#if selectedEventItems.length > 0}
+				  <div class="event-items-section">
+					<h3>Event Items</h3>
+					<ul>
+					  {#each selectedEventItems as item}
+						<li>{item.name} - {item.status}</li>
+					  {/each}
+					</ul>
+				  </div>
+				{:else}
+				  <div class="event-items-section">
+					<p>No items for this event.</p>
+				  </div>
+				{/if}
 			</div>
 		</section>
 	</div>

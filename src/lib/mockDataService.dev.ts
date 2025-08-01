@@ -26,7 +26,7 @@ class DevMockDataService implements IMockDataService {
     }
 
     async getClubMembers(clubId: string): Promise<any[]> {
-        const { mockClubMembers } = await import('./mockData');
+        const { MockClubMembersByClub } = await import('./mockData');
         return this.delay([...MockClubMembersByClub[clubId] || []]);
     }
 

@@ -10,7 +10,7 @@ import type { IMockDataService } from './mockDataService.types';
  * Returns empty data and does no processing
  */
 class ProdMockDataService implements IMockDataService {
-    async getClubMembers(): Promise<any[]> {
+    async getClubMembers(_clubId: string): Promise<any[]> {
         return [];
     }
 

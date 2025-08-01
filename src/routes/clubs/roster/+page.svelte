@@ -4,7 +4,7 @@
 	import type { Member } from '$lib/stores';
 	import { fetchClubMembers } from '$lib/api';
 	import { handleAsyncOperation, handleStoreError } from '$lib/components/StandardErrorHandler';
-	import { Crown, Mail, Calendar, Users } from 'lucide-svelte';
+	import { Crown, Mail, Calendar, Users, User } from 'lucide-svelte';
 
 	let unsubscribes: Array<() => void> = [];
 
@@ -33,7 +33,13 @@
 					handleAsyncOperation(
 						() => fetchClubMembers(club.id),
 						{
-							setError: (error) => handleStoreError(error, 'club members', (err) => membersError.set(err)),
+							setError: (error) => {
+								if (error) {
+									handleStoreError(error, 'club members', (err) => membersError.set(err));
+								} else {
+									membersError.set('Failed to update club members');
+								}
+							},
 							showToast: false,
 							context: 'reload club members'
 						}

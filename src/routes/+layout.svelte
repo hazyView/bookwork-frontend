@@ -54,10 +54,10 @@
 	async function setupMockState() {
 		console.log('Using mock authentication and data');
 		const mockUser = {
-			id: 'dev-user-123',
-			name: 'Development User',
-			email: 'dev@bookwork.com',
-			role: 'admin',
+			id: 'user-1',
+			name: 'Demo User',
+			email: 'demo@bookwork.com',
+			role: 'Club Lead',
 			isActive: true,
 			createdAt: new Date().toISOString()
 		};

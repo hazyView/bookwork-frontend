@@ -16,39 +16,39 @@ import { browser } from '$app/environment';
  * Get current authentication token from storage using secure encryption
  */
 async function getAuthToken(): Promise<string | null> {
-	if (!browser) return null;
-	
-	try {
-		const TOKEN_KEY = '__auth_token';
-		const encrypted = sessionStorage.getItem(TOKEN_KEY);
-		
-		if (!encrypted) return null;
-		
-		// Use proper AES-GCM decryption for security
-		try {
-			// Try to parse as JSON (new encrypted format with IV)
-			const parsed = JSON.parse(encrypted);
-			if (parsed.data && parsed.iv) {
-				return await CryptoUtils.decrypt(parsed.data, parsed.iv);
-			}
-		} catch {
-			// Fall back to base64 decoding for legacy tokens
-			return atob(encrypted);
-		}
-		
-		return null;
-	} catch {
-		return null;
-	}
+    if (!browser) return null;
+    
+    try {
+        const TOKEN_KEY = '__auth_token';
+        const encrypted = sessionStorage.getItem(TOKEN_KEY);
+        
+        if (!encrypted) return null;
+        
+        // Use proper AES-GCM decryption for security
+        try {
+            // Try to parse as JSON (new encrypted format with IV)
+            const parsed = JSON.parse(encrypted);
+            if (parsed.data && parsed.iv) {
+                return await CryptoUtils.decrypt(parsed.data, parsed.iv);
+            }
+        } catch {
+            // Fall back to base64 decoding for legacy tokens
+            return atob(encrypted);
+        }
+        
+        return null;
+    } catch {
+        return null;
+    }
 }
 
 // Lazy-loaded API configuration
 let _apiConfig: ReturnType<typeof getApiConfig> | null = null;
 function getConfig() {
-	if (!_apiConfig) {
-		_apiConfig = getApiConfig();
-	}
-	return _apiConfig;
+    if (!_apiConfig) {
+        _apiConfig = getApiConfig();
+    }
+    return _apiConfig;
 }
 
 const getAPIBase = () => getConfig().baseUrl;
@@ -308,10 +308,10 @@ const AuthResponseSchema = z.object({
  */
 
 // Convert mock club members to schema format
-async function adaptMockClubMembers(): Promise<z.infer<typeof ClubMemberSchema>[]> {
+async function adaptMockClubMembers(clubId: string): Promise<z.infer<typeof ClubMemberSchema>[]> {
     const mockDataService = await import('./mockDataService');
     const mockService = await mockDataService.getMockDataService();
-    const mockMembers = await mockService.getClubMembers();
+    const mockMembers = await mockService.getClubMembers(clubId);
     return mockMembers.map((member: any) => ({
         id: member.id,
         name: member.name,
@@ -343,9 +343,12 @@ async function adaptMockEvents(): Promise<z.infer<typeof EventSchema>[]> {
         description: event.description || '',
         date: new Date(event.date).toISOString(),
         location: event.location,
-        type: 'meeting' as const,
-        status: 'scheduled' as const,
-        organizerId: '1', // Default organizer
+        type: event.type || 'meeting',
+        status: event.status || 'scheduled',
+        organizerId: event.organizerId || '1',
+        attendees: Array.isArray(event.attendees) ? [...event.attendees] : [],
+        time: event.time || '',
+        book: event.book || undefined
     }));
 }
 
@@ -565,10 +568,10 @@ function createResilientFetch(timeout: number = getAPITimeout()) {
 // Lazy-loaded fetch function to avoid module-time evaluation
 let _resilientFetch: ReturnType<typeof createResilientFetch> | null = null;
 function getResilientFetch() {
-	if (!_resilientFetch) {
-		_resilientFetch = createResilientFetch();
-	}
-	return _resilientFetch;
+    if (!_resilientFetch) {
+        _resilientFetch = createResilientFetch();
+    }
+    return _resilientFetch;
 }
 
 /**
@@ -733,15 +736,31 @@ async function apiRequest<T>(
 export async function fetchClubMembers(clubId: string): Promise<z.infer<typeof ClubMemberSchema>[]> {
     if (isMockDataEnabled()) {
         // Return adapted mock data when mock data is enabled
-        return adaptMockClubMembers();
+        const mockMembers = await adaptMockClubMembers(clubId);
+        if (!mockMembers || !Array.isArray(mockMembers)) {
+            throw new ApiError(undefined, {
+                error: 'No club members found',
+                message: 'Failed to load club members (mock data returned null)',
+                code: 'NO_CLUB_MEMBERS'
+            });
+        }
+        return mockMembers;
     }
-    
+
     const membersSchema = z.array(ClubMemberSchema);
-    return apiRequest(
+    const members = await apiRequest(
         `${getAPIBase()}/club/${clubId}/members`,
         {},
         membersSchema
     );
+    if (!members || !Array.isArray(members)) {
+        throw new ApiError(undefined, {
+            error: 'No club members found',
+            message: 'Failed to load club members (API returned null)',
+            code: 'NO_CLUB_MEMBERS'
+        });
+    }
+    return members;
 }
 
 /**
@@ -754,10 +773,11 @@ export async function fetchClubMembers(clubId: string): Promise<z.infer<typeof C
  * @returns Promise with validated events array
  */
 export async function fetchScheduleEvents(clubId: string): Promise<z.infer<typeof EventSchema>[]> {
-    if (isMockDataEnabled()) {
+    // Always use mock data in development or when mock data is enabled
+    if (isDevelopment() || isMockDataEnabled()) {
         return adaptMockEvents();
     }
-    
+
     const eventsSchema = z.array(EventSchema);
     return apiRequest(
         `${getAPIBase()}/club/${clubId}/events`,

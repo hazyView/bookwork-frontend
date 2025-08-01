@@ -111,14 +111,22 @@ export interface Club {
  * ```
  */
 export interface ClubMember {
-	id: string;
-	name: string;
-	email: string;
-	phone: string;
-	role: string;
-	avatar: string;
-	joinedDate: string;
-	booksRead: number;
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  avatar?: string | null;
+  role: 'admin' | 'moderator' | 'member' | 'guest';
+  isActive: boolean;
+  lastLoginAt?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  joinedDate?: string | null;
+  joinDate: string;
+  status: 'active' | 'inactive' | 'pending';
+  permissions?: string[];
+  booksRead?: number;
+  clubRole?: 'admin' | 'moderator' | 'member' | 'guest';
 }
 
 /**

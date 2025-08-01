@@ -25,11 +25,12 @@
 			
 			if (result.success) {
 				//Set default club in dev mode
-				if (import.meta.env.DEV){
-					const { currentClub } = await import('$lib/stores');
-					const { mockUserClubs } = await import('$lib/mockData');
-					currentClub.set(mockUserClubs[0]);
-				}
+			   if (import.meta.env.DEV){
+				   const { currentClub, user } = await import('$lib/stores');
+				   const { mockUserClubs, mockUser } = await import('$lib/mockData');
+				   currentClub.set(mockUserClubs[0]);
+				   user.set(mockUser);
+			   }
 				// Redirect to dashboard
 				goto('/');
 			} else {

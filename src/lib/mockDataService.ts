@@ -51,9 +51,9 @@ export async function getMockDataService(): Promise<IMockDataService> {
 // Legacy export for backward compatibility
 // This creates a lazy-initialized service
 export const mockDataService = {
-    async getClubMembers() {
+    async getClubMembers(clubId: string) {
         const service = await getMockDataService();
-        return service.getClubMembers();
+        return service.getClubMembers(clubId);
     },
     async getScheduleEvents() {
         const service = await getMockDataService();

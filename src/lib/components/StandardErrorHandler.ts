@@ -13,22 +13,28 @@ import { TIME_CONSTANTS, UI_CONSTANTS } from '$lib/constants';
  */
 export function extractErrorMessage(error: unknown, fallbackMessage: string = 'An unexpected error occurred'): string {
 	if (!error) return fallbackMessage;
-	
+
 	if (error instanceof Error) {
-		return error.message || fallbackMessage;
+		if (typeof error.message === 'string' && error.message.trim() !== '') {
+			return error.message;
+		}
+		return fallbackMessage;
 	}
-	
+
 	if (typeof error === 'string') {
-		return error || fallbackMessage;
+		if (error.trim() !== '') {
+			return error;
+		}
+		return fallbackMessage;
 	}
-	
+
 	if (typeof error === 'object' && error !== null && 'message' in error) {
 		const message = (error as { message: unknown }).message;
-		if (typeof message === 'string') {
-			return message || fallbackMessage;
+		if (typeof message === 'string' && message.trim() !== '') {
+			return message;
 		}
 	}
-	
+
 	return fallbackMessage;
 }
 
@@ -142,17 +148,25 @@ export function handleStoreError(
 	setError?: (error: string | null) => void,
 	showToast: boolean = false
 ): void {
-	const errorMessage = extractErrorMessage(error, `Failed to update ${storeName}`);
-	
+	let errorMessage = extractErrorMessage(error, `Failed to update ${storeName}`);
+	// Prevent setting error to null, undefined, or the string 'null'/'undefined'
+	if (
+		errorMessage == null ||
+		errorMessage === 'null' ||
+		errorMessage === 'undefined' ||
+		(typeof errorMessage === 'string' && errorMessage.trim() === '')
+	) {
+		errorMessage = `Failed to update ${storeName}`;
+	}
 	setError?.(errorMessage);
-	
+
 	if (showToast) {
 		handleApiError(error, errorMessage);
 	}
-	
+
 	// Development logging
 	if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
-		console.error(`[Store: ${storeName}] Error:`, error);
+		console.error(`[Store: ${storeName}] Error:`, errorMessage, error);
 	}
 }
 
