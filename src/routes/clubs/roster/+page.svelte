@@ -1,10 +1,11 @@
 <script lang="ts">
+	console.log('VITE_ENABLE_MOCK_DATA:', import.meta.env.VITE_ENABLE_MOCK_DATA);
 	import { onMount, onDestroy } from 'svelte';
 	import { clubMembers, membersLoading, membersError, currentClub } from '$lib/stores';
 	import type { Member } from '$lib/stores';
 	import { fetchClubMembers } from '$lib/api';
 	import { handleAsyncOperation, handleStoreError } from '$lib/components/StandardErrorHandler';
-	import { Crown, Mail, Calendar, Users, User } from 'lucide-svelte';
+import { Crown, Mail, Calendar, Users, User, Phone } from 'lucide-svelte';
 
 	let unsubscribes: Array<() => void> = [];
 
@@ -33,13 +34,8 @@
 					handleAsyncOperation(
 						() => fetchClubMembers(club.id),
 						{
-							setError: (error) => {
-								if (error) {
-									handleStoreError(error, 'club members', (err) => membersError.set(err));
-								} else {
-									membersError.set('Failed to update club members');
-								}
-							},
+							setLoading: (loading) => membersLoading.set(loading),
+							setError: (error) => membersError.set(error),
 							showToast: false,
 							context: 'reload club members'
 						}

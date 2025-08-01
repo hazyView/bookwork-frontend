@@ -68,7 +68,7 @@
 		try {
 			const { currentClub } = await import('$lib/stores');
 			currentClub.set({
-				id: '9e1db325-8d5a-4b1b-be9f-d97fe2f59ae5',
+				id: 'club-1',
 				name: 'Test Book Club',
 				description: 'A test club for development'
 			});

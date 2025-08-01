@@ -13,6 +13,8 @@ COPY . .
 
 #Mock data env for build
 ENV VITE_ENABLE_MOCK_DATA=true
+ENV VITE_API_BASE=http://localhost:3001/api
+ENV VITE_API_TIMEOUT=10000
 
 # Build the SvelteKit app for production using adapter-node
 RUN npm run build

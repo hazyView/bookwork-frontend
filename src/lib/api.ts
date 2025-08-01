@@ -312,23 +312,20 @@ async function adaptMockClubMembers(clubId: string): Promise<z.infer<typeof Club
     const mockDataService = await import('./mockDataService');
     const mockService = await mockDataService.getMockDataService();
     const mockMembers = await mockService.getClubMembers(clubId);
+    // Preserve all original fields, only fill in missing optional fields if needed
     return mockMembers.map((member: any) => ({
-        id: member.id,
-        name: member.name,
-        email: member.email,
-        phone: null,
-        avatar: member.avatar,
-        role: (member.role === 'admin' || member.role === 'moderator' || member.role === 'guest') ? member.role as 'admin' | 'moderator' | 'guest' : 'member' as const,
-        isActive: true,
-        lastLoginAt: null,
-        createdAt: new Date(Date.now() - Math.random() * TIME_CONSTANTS.MOCK_DATA_DATE_RANGE_DAYS * 24 * 60 * 60 * 1000).toISOString(), // Random date in last 30 days
-        updatedAt: new Date().toISOString(),
-        joinedDate: new Date(member.joinedDate || Date.now()).toISOString(),
-        joinDate: new Date(member.joinedDate || Date.now()).toISOString(),
-        status: 'active' as const,
-        permissions: member.role === 'admin' ? ['read', 'write', 'delete'] : ['read'],
-        booksRead: Math.floor(Math.random() * 50),
-        clubRole: (member.role === 'admin' || member.role === 'moderator' || member.role === 'guest') ? member.role as 'admin' | 'moderator' | 'guest' : 'member' as const,
+        ...member,
+        phone: member.phone ?? null,
+        avatar: member.avatar ?? null,
+        lastLoginAt: member.lastLoginAt ?? null,
+        updatedAt: member.updatedAt ?? new Date().toISOString(),
+        joinedDate: member.joinedDate ?? member.joinDate ?? new Date().toISOString(),
+        joinDate: member.joinDate ?? member.joinedDate ?? new Date().toISOString(),
+        permissions: member.permissions ?? [],
+        booksRead: member.booksRead ?? 0,
+        clubRole: member.clubRole ?? member.role,
+        isActive: member.isActive ?? true,
+        status: member.status ?? 'active',
     }));
 }
 

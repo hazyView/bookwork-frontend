@@ -187,7 +187,9 @@ export const MockClubMembersByClub: Record<string, ClubMember[]> = {
             joinDate: '2024-01-01T12:00:00.000Z',
             status: 'active',
             permissions: [],
-            clubRole: 'member'
+            clubRole: 'member',
+            lastLoginAt: null,
+            updatedAt: '2024-01-01T12:00:00.000Z'
         },
         {
             id: 'c4c2d3e4-5f6a-7890-1234-567890abcdef',
@@ -203,7 +205,9 @@ export const MockClubMembersByClub: Record<string, ClubMember[]> = {
             joinDate: '2024-01-02T12:00:00.000Z',
             status: 'active',
             permissions: [],
-            clubRole: 'member'
+            clubRole: 'member',
+            lastLoginAt: null,
+            updatedAt: '2024-01-02T12:00:00.000Z'
         },
         {
             id: 'd5d3e4f5-6a7b-8901-2345-678901abcdef',
@@ -219,7 +223,9 @@ export const MockClubMembersByClub: Record<string, ClubMember[]> = {
             joinDate: '2024-09-02T12:00:00.000Z',
             status: 'active',
             permissions: [],
-            clubRole: 'member'
+            clubRole: 'member',
+            lastLoginAt: null,
+            updatedAt: '2024-09-02T12:00:00.000Z'
         },
         {
             id: 'e6e4f5g6-7b8c-9012-3456-789012abcdef',
@@ -235,14 +241,16 @@ export const MockClubMembersByClub: Record<string, ClubMember[]> = {
             joinDate: '2025-02-27T12:00:00.000Z',
             status: 'active',
             permissions: [],
-            clubRole: 'member'
+            clubRole: 'member',
+            lastLoginAt: null,
+            updatedAt: '2025-02-27T12:00:00.000Z'
         },
         {
             id: 'f7f5g6h7-8c9d-0123-4567-890123abcdef',
             name: 'Colline Dorkins',
             email: 'cdorkinsm@mac.com',
             phone: '(111)111-1111',
-            role: 'member',
+            role: 'moderator',
             avatar: 'https://www.bookwork-demo.com/default-avatar.png',
             joinedDate: '2024-12-23T12:00:00.000Z',
             booksRead: 95,
@@ -251,7 +259,9 @@ export const MockClubMembersByClub: Record<string, ClubMember[]> = {
             joinDate: '2024-12-23T12:00:00.000Z',
             status: 'active',
             permissions: [],
-            clubRole: 'member'
+            clubRole: 'moderator',
+            lastLoginAt: null,
+            updatedAt: '2024-12-23T12:00:00.000Z'
         },
         {
             id: 'a8a6h7i8-9d0e-1234-5678-901234abcdef',
@@ -267,7 +277,9 @@ export const MockClubMembersByClub: Record<string, ClubMember[]> = {
             joinDate: '2024-11-28T12:00:00.000Z',
             status: 'active',
             permissions: [],
-            clubRole: 'admin'
+            clubRole: 'admin',
+            lastLoginAt: null,
+            updatedAt: '2024-11-28T12:00:00.000Z'
         },
         {
             id: 'b9b7i8j9-0e1f-2345-6789-012345abcdef',
@@ -283,7 +295,48 @@ export const MockClubMembersByClub: Record<string, ClubMember[]> = {
             joinDate: '2025-04-16T12:00:00.000Z',
             status: 'active',
             permissions: [],
-            clubRole: 'moderator'
+            clubRole: 'moderator',
+            lastLoginAt: null,
+            updatedAt: '2025-04-16T12:00:00.000Z'
+        }
+    ],
+    // Add mock data for the UUID club ID as well for robustness
+    '9e1db325-8d5a-4b1b-be9f-d97fe2f59ae5': [
+        {
+            id: 'b3b1c2d3-4e5f-6789-0123-456789abcdef',
+            name: 'John Doe',
+            email: 'johndoe@example.com',
+            phone: '(111)111-1111',
+            role: 'member',
+            avatar: 'https://www.bookwork-demo.com/default-avatar.png',
+            joinedDate: '2024-01-01T12:00:00.000Z',
+            booksRead: 5,
+            isActive: true,
+            createdAt: '2024-01-01T12:00:00.000Z',
+            joinDate: '2024-01-01T12:00:00.000Z',
+            status: 'active',
+            permissions: [],
+            clubRole: 'member',
+            lastLoginAt: null,
+            updatedAt: '2024-01-01T12:00:00.000Z'
+        },
+        {
+            id: 'c4c2d3e4-5f6a-7890-1234-567890abcdef',
+            name: 'Jane Smith',
+            email: 'janesmith@example.com',
+            phone: '(111)111-1111',
+            role: 'admin',
+            avatar: 'https://www.bookwork-demo.com/default-avatar.png',
+            joinedDate: '2024-01-02T12:00:00.000Z',
+            booksRead: 10,
+            isActive: true,
+            createdAt: '2024-01-02T12:00:00.000Z',
+            joinDate: '2024-01-02T12:00:00.000Z',
+            status: 'active',
+            permissions: [],
+            clubRole: 'admin',
+            lastLoginAt: null,
+            updatedAt: '2024-01-02T12:00:00.000Z'
         }
     ]
 };
