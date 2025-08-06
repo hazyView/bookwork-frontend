@@ -29,6 +29,7 @@ jobs:
         with:
           workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
           service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
+          audience: 'https://iam.googleapis.com/projects/166623251454/locations/global/workloadIdentityPools/github-actions-pool'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
