@@ -53,15 +53,18 @@ jobs:
           path: gitops
 
       - name: Update Image Tag in GitOps Repo
+        env:
+          IMAGE_FQN: ${{ steps.build-image.outputs.IMAGE_FQN }}
         run: |
+          IMAGE_TAG=$(echo $IMAGE_FQN | cut -d':' -f2)
           cd gitops/tenants/bookwork/base
-          kustomize edit set image ${{ steps.build-image.outputs.IMAGE_FQN }}
+          kustomize edit set image $IMAGE_FQN
           git config user.name "GitHub Actions Bot"
           git config user.email "actions-bot@github.com"
           git add kustomization.yaml
           # Commit only if there are changes
           if ! git diff --staged --quiet; then
-            git commit -m "ci: Update ${{ env.IMAGE_NAME }} to tag ${{ steps.build-image.outputs.IMAGE_FQN##*: }}"
+            git commit -m "ci: Update ${{ env.IMAGE_NAME }} to tag $IMAGE_TAG"
             git push
           else
             echo "No changes to commit."
