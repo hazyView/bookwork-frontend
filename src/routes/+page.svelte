@@ -2,9 +2,11 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { user, isAuthenticated } from '$lib/stores';
+	import CardWithList from '$lib/components/CardWithList.svelte';
 
 	let currentUser;
 	let authenticated = false;
+	let showGithubCard = false;
 
 	// Subscribe to stores
 	$: currentUser = $user;
@@ -32,6 +34,10 @@
 				break;
 		}
 	}
+
+	function toggleGithubCard() {
+		showGithubCard = !showGithubCard;
+	}
 </script>
 
 <svelte:head>
@@ -43,7 +49,7 @@
 		<h1 class="hero-title">📚 Welcome to BookWork</h1>
 		<p class="hero-subtitle">Your comprehensive business management platform</p>
 		{#if currentUser}
-			<p class="welcome-message">Hello, {currentUser.name}! Ready to get started?</p>
+			<p class="welcome-message">Hello, {currentUser?.name}! Ready to get started?</p>
 		{/if}
 	</div>
 
@@ -103,6 +109,18 @@
 			</div>
 		</div>
 	</div>
+
+
+		<!-- Github Repos Section -->
+		<div class="github-repos-section">
+			<h2 class="status-title">GitHub Repos</h2>
+				<div class="Repo-grid">
+				<button class="github-repos-btn" onclick={toggleGithubCard}>View Repos</button>
+				{#if showGithubCard}
+				<CardWithList />
+				{/if}
+			</div>
+		</div>
 
 	{#if import.meta.env.DEV}
 		<div class="debug-section">
@@ -336,4 +354,35 @@
 			grid-template-columns: 1fr;
 		}
 	}
+/* Github Repos Section Styling */
+.github-repos-section {
+	background: #f8fafc;
+	border-radius: 12px;
+	border: 1px solid #e2e8f0;
+	margin-top: 2rem;
+	margin-bottom: 2rem;
+	padding: 1.5rem 1.5rem 1rem 1.5rem;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+}
+
+.github-repos-btn {
+	background: var(--primary-color, #3b82f6);
+	color: white;
+	border: none;
+	padding: 0.75rem 1.5rem;
+	border-radius: 6px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 0.2s, box-shadow 0.2s;
+	margin-bottom: 1rem;
+	box-shadow: 0 2px 6px rgba(59,130,246,0.08);
+	font-size: 1rem;
+}
+.github-repos-btn:hover {
+	background: #2563eb;
+	box-shadow: 0 4px 12px rgba(59,130,246,0.15);
+}
 </style>
