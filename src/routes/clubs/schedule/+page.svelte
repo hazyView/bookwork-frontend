@@ -9,6 +9,17 @@
 	import { TIME_CONSTANTS } from '$lib/constants';
 	import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin, BookOpen, Plus } from 'lucide-svelte';
 	import { mockEventItems } from '$lib/mockData';
+	import DrawerNavigation from '$lib/components/DrawerNavigation.svelte';
+
+	let isDrawerOpen = false;
+
+	function openDrawer() {
+		isDrawerOpen = true;
+	}
+
+	function closeDrawer() {
+		isDrawerOpen = false;
+	}
 
 	// Defensive fallback for event items in modal
 	$: selectedEventItems = selectedEvent ? (mockEventItems[selectedEvent.id] || []) : [];
@@ -205,6 +216,16 @@
 
 <div class="container">
 	<div class="page-header">
+		<div class="header-controls">
+			<button class="drawer-toggle" onclick={openDrawer} aria-label="Open navigation menu">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<line x1="3" y1="6" x2="21" y2="6"></line>
+					<line x1="3" y1="12" x2="21" y2="12"></line>
+					<line x1="3" y1="18" x2="21" y2="18"></line>
+				</svg>
+				Menu
+			</button>
+		</div>
 		<h1 class="page-title">Club Schedule</h1>
 		{#if $currentClub}
 			<p class="page-subtitle">{$currentClub.name}</p>
@@ -586,6 +607,40 @@
 		margin-bottom: 2rem;
 		flex-wrap: wrap;
 		gap: 1rem;
+		position: relative;
+	}
+
+	.header-controls {
+		position: absolute;
+		top: 0;
+		left: 0;
+	}
+
+	.drawer-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: var(--primary-color, #3b82f6);
+		color: white;
+		border: none;
+		padding: 0.75rem 1rem;
+		border-radius: 8px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s;
+		font-size: 0.9rem;
+		box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+	}
+
+	.drawer-toggle:hover {
+		background: #2563eb;
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+	}
+
+	.drawer-toggle svg {
+		width: 20px;
+		height: 20px;
 	}
 
 	.page-title {
@@ -914,6 +969,15 @@
 	}
 
 	@media (max-width: 768px) {
+		.header-controls {
+			position: static;
+			margin-bottom: 1rem;
+		}
+		
+		.drawer-toggle {
+			align-self: flex-start;
+		}
+
 		.page-header {
 			flex-direction: column;
 			align-items: flex-start;
@@ -984,3 +1048,6 @@
 		100% { transform: rotate(360deg); }
 	}
 </style>
+
+<!-- Drawer Navigation -->
+<DrawerNavigation isOpen={isDrawerOpen} on:close={closeDrawer} />

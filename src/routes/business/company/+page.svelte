@@ -13,8 +13,21 @@
 		Mail,
 		MapPin,
 		Building,
-		Calendar
+		Calendar,
+		Menu
 	} from 'lucide-svelte';
+	import DrawerNavigation from '$lib/components/DrawerNavigation.svelte';
+
+	// Drawer state
+	let isDrawerOpen = false;
+
+	function toggleDrawer() {
+		isDrawerOpen = !isDrawerOpen;
+	}
+
+	function closeDrawer() {
+		isDrawerOpen = false;
+	}
 
 	const stats = [
 		{ label: 'Founded', value: '2020' },
@@ -170,6 +183,16 @@
 	<!-- Hero Section -->
 	<section class="hero">
 		<div class="container">
+			<div class="header-controls">
+				<button 
+					class="menu-btn" 
+					on:click={toggleDrawer}
+					aria-label="Open navigation menu"
+					aria-expanded={isDrawerOpen}
+				>
+					<Menu size={24} />
+				</button>
+			</div>
 			<div class="hero-content">
 				<h1 class="hero-title">
 					Connecting Authors with 
@@ -922,4 +945,48 @@
 			font-size: 2rem;
 		}
 	}
+
+	/* Header controls styles */
+	.header-controls {
+		position: absolute;
+		top: 1rem;
+		left: 1rem;
+		z-index: 10;
+	}
+
+	.menu-btn {
+		background: none;
+		border: none;
+		padding: 0.5rem;
+		border-radius: 0.5rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		color: #374151;
+		transition: all 0.2s ease;
+	}
+
+	.menu-btn:hover {
+		background-color: #f3f4f6;
+		color: #111827;
+	}
+
+	.menu-btn:focus {
+		outline: 2px solid #3b82f6;
+		outline-offset: 2px;
+	}
+
+	@media (max-width: 768px) {
+		.header-controls {
+			top: 0.5rem;
+			left: 0.5rem;
+		}
+		
+		.menu-btn {
+			padding: 0.375rem;
+		}
+	}
 </style>
+
+<DrawerNavigation {isDrawerOpen} on:close={closeDrawer} />

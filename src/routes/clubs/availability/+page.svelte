@@ -4,6 +4,17 @@
 	import { updateAvailability } from '$lib/api';
 	import { formatDate, formatTime } from '$lib/utils';
 	import { Calendar, Clock, MapPin, Users, Check, X, User } from 'lucide-svelte';
+	import DrawerNavigation from '$lib/components/DrawerNavigation.svelte';
+
+	let isDrawerOpen = false;
+
+	function openDrawer() {
+		isDrawerOpen = true;
+	}
+
+	function closeDrawer() {
+		isDrawerOpen = false;
+	}
 
 	let loading = false;
 	let error = null;
@@ -152,6 +163,16 @@
 
 <div class="container">
 	<div class="page-header">
+		<div class="header-controls">
+			<button 
+				class="menu-btn" 
+				on:click={toggleDrawer}
+				aria-label="Open navigation menu"
+				aria-expanded={isDrawerOpen}
+			>
+				<Menu size={24} />
+			</button>
+		</div>
 		<h1 class="page-title">Meeting Availability</h1>
 		{#if $currentClub}
 			<p class="page-subtitle">{$currentClub.name}</p>
@@ -568,4 +589,48 @@
 			grid-template-columns: 1fr;
 		}
 	}
+
+	/* Header controls styles */
+	.header-controls {
+		position: absolute;
+		top: 1rem;
+		left: 1rem;
+		z-index: 10;
+	}
+
+	.menu-btn {
+		background: none;
+		border: none;
+		padding: 0.5rem;
+		border-radius: 0.5rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		color: #374151;
+		transition: all 0.2s ease;
+	}
+
+	.menu-btn:hover {
+		background-color: #f3f4f6;
+		color: #111827;
+	}
+
+	.menu-btn:focus {
+		outline: 2px solid #3b82f6;
+		outline-offset: 2px;
+	}
+
+	@media (max-width: 768px) {
+		.header-controls {
+			top: 0.5rem;
+			left: 0.5rem;
+		}
+		
+		.menu-btn {
+			padding: 0.375rem;
+		}
+	}
 </style>
+
+<DrawerNavigation {isDrawerOpen} on:close={closeDrawer} />

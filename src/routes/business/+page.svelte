@@ -1,5 +1,16 @@
 <script>
 	import { Building2, Users, TrendingUp, Globe, BookOpen, Sparkles } from 'lucide-svelte';
+	import DrawerNavigation from '$lib/components/DrawerNavigation.svelte';
+
+	let isDrawerOpen = false;
+
+	function openDrawer() {
+		isDrawerOpen = true;
+	}
+
+	function closeDrawer() {
+		isDrawerOpen = false;
+	}
 </script>
 
 <svelte:head>
@@ -9,6 +20,16 @@
 
 <div class="hero">
 	<div class="container">
+		<div class="hero-header">
+			<button class="drawer-toggle" onclick={openDrawer} aria-label="Open navigation menu">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<line x1="3" y1="6" x2="21" y2="6"></line>
+					<line x1="3" y1="12" x2="21" y2="12"></line>
+					<line x1="3" y1="18" x2="21" y2="18"></line>
+				</svg>
+				Menu
+			</button>
+		</div>
 		<div class="hero-content">
 			<h1 class="hero-title">Grow Your Literary Business</h1>
 			<p class="hero-description">
@@ -184,6 +205,41 @@
 		color: white;
 		padding: 6rem 0 4rem;
 		text-align: center;
+		position: relative;
+	}
+
+	.hero-header {
+		position: absolute;
+		top: 2rem;
+		left: 2rem;
+		z-index: 10;
+	}
+
+	.drawer-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: rgba(255, 255, 255, 0.2);
+		color: white;
+		border: 1px solid rgba(255, 255, 255, 0.3);
+		padding: 0.75rem 1rem;
+		border-radius: 8px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s;
+		font-size: 0.9rem;
+		backdrop-filter: blur(10px);
+	}
+
+	.drawer-toggle:hover {
+		background: rgba(255, 255, 255, 0.3);
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+	}
+
+	.drawer-toggle svg {
+		width: 20px;
+		height: 20px;
 	}
 
 	.hero-content {
@@ -376,6 +432,21 @@
 	}
 
 	@media (max-width: 768px) {
+		.hero-header {
+			top: 1rem;
+			left: 1rem;
+		}
+
+		.drawer-toggle {
+			padding: 0.625rem 0.875rem;
+			font-size: 0.8rem;
+		}
+
+		.drawer-toggle svg {
+			width: 18px;
+			height: 18px;
+		}
+
 		.hero-title {
 			font-size: 2.5rem;
 		}
@@ -399,3 +470,6 @@
 		}
 	}
 </style>
+
+<!-- Drawer Navigation -->
+<DrawerNavigation isOpen={isDrawerOpen} on:close={closeDrawer} />

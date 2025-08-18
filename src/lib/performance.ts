@@ -3,6 +3,8 @@
  * Lean implementation focusing on actually used features
  */
 
+import { ApplicationMetrics } from './metrics';
+
 /**
  * Simple cache implementation for API responses and computed values
  */
@@ -32,13 +34,18 @@ class CacheManager {
 
     get<T>(key: string): T | null {
         const entry = this.cache.get(key);
-        if (!entry) return null;
-        
-        if (Date.now() > entry.expires) {
-            this.cache.delete(key);
+        if (!entry) {
+            ApplicationMetrics.recordCacheMiss('api');
             return null;
         }
         
+        if (Date.now() > entry.expires) {
+            this.cache.delete(key);
+            ApplicationMetrics.recordCacheMiss('api');
+            return null;
+        }
+        
+        ApplicationMetrics.recordCacheHit('api');
         return entry.value;
     }
 

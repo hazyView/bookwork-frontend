@@ -1,12 +1,16 @@
-<script>
+<script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { user, isAuthenticated } from '$lib/stores';
 	import CardWithList from '$lib/components/CardWithList.svelte';
+	import DrawerNavigation from '$lib/components/DrawerNavigation.svelte';
+	import QuickActionsCard from '$lib/components/QuickActionsCard.svelte';
 
 	let currentUser;
 	let authenticated = false;
 	let showGithubCard = false;
+	let showQuickActionsCard = false;
+	let isDrawerOpen = false;
 
 	// Subscribe to stores
 	$: currentUser = $user;
@@ -17,11 +21,11 @@
 	});
 
 	// Navigation functions
-	function navigateTo(path) {
+	function navigateTo(path: string) {
 		goto(path);
 	}
 
-	function handleButtonClick(action) {
+	function handleButtonClick(action: string) {
 		switch(action) {
 			case 'team':
 				navigateTo('/clubs/roster');
@@ -38,11 +42,33 @@
 	function toggleGithubCard() {
 		showGithubCard = !showGithubCard;
 	}
+
+	function toggleQuickActionsCard() {
+		showQuickActionsCard = !showQuickActionsCard;
+	}
+
+	function openDrawer() {
+		isDrawerOpen = true;
+	}
+
+	function closeDrawer() {
+		isDrawerOpen = false;
+	}
 </script>
 
 <svelte:head>
 	<title>Dashboard - BookWork</title>
 </svelte:head>
+
+<!-- Left Side Hover Trigger -->
+<div 
+	class="nav-trigger" 
+	onmouseenter={openDrawer} 
+	role="button" 
+	tabindex="0"
+	aria-label="Hover to open navigation menu"
+	onkeydown={(e) => e.key === 'Enter' && openDrawer()}
+></div>
 
 <div class="page-container">
 	<div class="hero-section">
@@ -113,12 +139,20 @@
 
 		<!-- Github Repos Section -->
 		<div class="github-repos-section">
-			<h2 class="status-title">GitHub Repos</h2>
-				<div class="Repo-grid">
-				<button class="github-repos-btn" onclick={toggleGithubCard}>View Repos</button>
-				{#if showGithubCard}
-				<CardWithList />
-				{/if}
+			<h2 class="status-title">GitHub Repos & Quick Actions</h2>
+			<div class="cards-container">
+				<div class="card-wrapper">
+					<button class="github-repos-btn" onclick={toggleGithubCard}>View Repos</button>
+					{#if showGithubCard}
+						<CardWithList />
+					{/if}
+				</div>
+				<div class="card-wrapper">
+					<button class="quick-actions-btn" onclick={toggleQuickActionsCard}>Quick Actions</button>
+					{#if showQuickActionsCard}
+						<QuickActionsCard />
+					{/if}
+				</div>
 			</div>
 		</div>
 
@@ -135,18 +169,59 @@
 	{/if}
 </div>
 
+<!-- Drawer Navigation -->
+<DrawerNavigation isOpen={isDrawerOpen} on:close={closeDrawer} />
+
 <style>
+	/* Left Side Hover Trigger */
+	.nav-trigger {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 20px;
+		height: 100vh;
+		background: transparent;
+		z-index: 40;
+		cursor: pointer;
+		transition: all 0.3s ease;
+	}
+
+	.nav-trigger:hover {
+		background: linear-gradient(to right, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
+		width: 40px;
+	}
+
+	.nav-trigger::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 3px;
+		height: 60px;
+		background: rgba(59, 130, 246, 0.3);
+		border-radius: 0 3px 3px 0;
+		opacity: 0;
+		transition: all 0.3s ease;
+	}
+
+	.nav-trigger:hover::before {
+		opacity: 1;
+		background: rgba(59, 130, 246, 0.6);
+	}
+
 	.page-container {
 		padding: 2rem;
 		max-width: 1200px;
 		margin: 0 auto;
-		margin-top: 80px; /* Account for fixed navigation */
+		margin-left: 20px; /* Account for hover trigger */
 	}
 
 	.hero-section {
 		text-align: center;
 		margin-bottom: 3rem;
 		padding: 2rem 0;
+		position: relative;
 	}
 
 	.hero-title {
@@ -338,8 +413,17 @@
 	}
 
 	@media (max-width: 768px) {
+		.nav-trigger {
+			width: 15px;
+		}
+
+		.nav-trigger:hover {
+			width: 30px;
+		}
+
 		.page-container {
 			padding: 1rem;
+			margin-left: 15px;
 		}
 
 		.hero-title {
@@ -361,14 +445,25 @@
 	border: 1px solid #e2e8f0;
 	margin-top: 2rem;
 	margin-bottom: 2rem;
-	padding: 1.5rem 1.5rem 1rem 1.5rem;
+	padding: 1.5rem;
 	box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+.cards-container {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+	gap: 2rem;
+	margin-top: 1rem;
+}
+
+.card-wrapper {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
 }
 
-.github-repos-btn {
+.github-repos-btn,
+.quick-actions-btn {
 	background: var(--primary-color, #3b82f6);
 	color: white;
 	border: none;
@@ -381,8 +476,28 @@
 	box-shadow: 0 2px 6px rgba(59,130,246,0.08);
 	font-size: 1rem;
 }
-.github-repos-btn:hover {
+
+.github-repos-btn:hover,
+.quick-actions-btn:hover {
 	background: #2563eb;
 	box-shadow: 0 4px 12px rgba(59,130,246,0.15);
+}
+
+.quick-actions-btn {
+	background: #059669;
+	box-shadow: 0 2px 6px rgba(5,150,105,0.08);
+}
+
+.quick-actions-btn:hover {
+	background: #047857;
+	box-shadow: 0 4px 12px rgba(5,150,105,0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+	.cards-container {
+		grid-template-columns: 1fr;
+		gap: 1.5rem;
+	}
 }
 </style>

@@ -7,6 +7,7 @@ import { createSessionMiddleware } from '$lib/sessionManager';
 import type { SessionData } from '$lib/sessionManager';
 import { getApiConfig } from '$lib/env';
 import { dev } from '$app/environment';
+import { ApplicationMetrics } from '$lib/metrics';
 
 // Create rate limiting middleware
 const rateLimitMiddleware = createRateLimitMiddleware();
@@ -16,6 +17,14 @@ const rateLimitMiddleware = createRateLimitMiddleware();
  * Implements comprehensive security headers, rate limiting, HTTPS enforcement, and session management
  */
 export const handle: Handle = async ({ event, resolve }) => {
+	const start = Date.now(); // Track request start time
+	const url = new URL(event.request.url);
+	const path = url.pathname;
+	const method = event.request.method;
+
+	// Skip metrics collection for the metrics endpoint itself to avoid recursion
+	const skipMetrics = path === '/metrics';
+
 	// Create session middleware instance for this request
 	const sessionMiddleware = createSessionMiddleware();
 
@@ -32,8 +41,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		const url = new URL(event.request.url);
 		const path = url.pathname;
 		
-		// HTTPS enforcement in production
-		if (!dev && url.protocol !== 'https:') {
+		// HTTPS enforcement in production (skip for metrics endpoint and localhost)
+		if (!dev && url.protocol !== 'https:' && path !== '/metrics' && !url.hostname.includes('localhost')) {
 			return new Response(null, {
 				status: 301,
 				headers: {
@@ -130,6 +139,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 		// Configure CORS for API endpoints
 		if (path.startsWith('/api')) {
 			return configureCORS(event.request, response);
+		}
+
+		// Record metrics for this request (skip for metrics endpoint to avoid recursion)
+		if (!skipMetrics) {
+			const duration = Date.now() - start;
+			ApplicationMetrics.recordHttpRequest(method, path, response.status, duration);
+			
+			// Record page loads for HTML responses
+			if (response.headers.get('content-type')?.includes('text/html')) {
+				ApplicationMetrics.recordPageLoad(path);
+			}
 		}
 
 		return response;

@@ -1,5 +1,6 @@
 // Rate limiting middleware with progressive delays
 import type { RequestEvent } from '@sveltejs/kit';
+import { ApplicationMetrics } from './metrics';
 
 interface RateLimitEntry {
 	count: number;
@@ -237,6 +238,9 @@ export function createRateLimitMiddleware(config: RateLimitConfig = defaultConfi
 		const result = await rateLimit(event, config);
 		
 		if (!result.allowed) {
+			// Record rate limit hit for metrics
+			ApplicationMetrics.recordRateLimitHit(new URL(event.request.url).pathname);
+			
 			return new Response(
 				JSON.stringify({
 					error: result.error || 'Rate limit exceeded',

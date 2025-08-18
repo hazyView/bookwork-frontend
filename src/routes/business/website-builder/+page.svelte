@@ -641,6 +641,7 @@
 		justify-content: space-between;
 		align-items: center;
 		flex-shrink: 0;
+		position: relative;
 	}
 
 	.builder-title {
@@ -1001,6 +1002,10 @@
 	}
 
 	@media (max-width: 768px) {
+		.builder-title {
+			margin-left: 1rem;
+		}
+
 		.builder-layout {
 			flex-direction: column;
 		}

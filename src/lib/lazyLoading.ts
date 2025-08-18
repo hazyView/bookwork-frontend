@@ -156,7 +156,6 @@ export class IntersectionLazyLoader {
 export const lazyRoutes = {
   // Business routes
   business: () => import('../routes/business/+page.svelte'),
-  businessServices: () => import('../routes/business/services/+page.svelte'),
   businessCommunity: () => import('../routes/business/community/+page.svelte'),
   businessCompany: () => import('../routes/business/company/+page.svelte'),
   businessWebsiteBuilder: () => import('../routes/business/website-builder/+page.svelte'),

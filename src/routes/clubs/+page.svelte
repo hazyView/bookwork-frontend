@@ -2,6 +2,17 @@
 	import { currentClub, user, scheduleEvents, clubMembers } from '$lib/stores';
 	import { Users, Calendar, CheckCircle, Package, BookOpen, Clock, MapPin } from 'lucide-svelte';
 	import { formatDate, formatTime } from '$lib/utils';
+	import DrawerNavigation from '$lib/components/DrawerNavigation.svelte';
+
+	let isDrawerOpen = false;
+
+	function openDrawer() {
+		isDrawerOpen = true;
+	}
+
+	function closeDrawer() {
+		isDrawerOpen = false;
+	}
 
 	// Get next upcoming event
 	function getNextEvent() {
@@ -50,6 +61,16 @@
 
 <div class="container">
 	<div class="dashboard-header">
+		<div class="header-controls">
+			<button class="drawer-toggle" onclick={openDrawer} aria-label="Open navigation menu">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<line x1="3" y1="6" x2="21" y2="6"></line>
+					<line x1="3" y1="12" x2="21" y2="12"></line>
+					<line x1="3" y1="18" x2="21" y2="18"></line>
+				</svg>
+				Menu
+			</button>
+		</div>
 		<div class="welcome-section">
 			<h1 class="welcome-title">Welcome back, {$user?.name || 'Member'}!</h1>
 			{#if $currentClub}
@@ -232,6 +253,40 @@
 	.dashboard-header {
 		margin-bottom: 2rem;
 		text-align: center;
+		position: relative;
+	}
+
+	.header-controls {
+		position: absolute;
+		top: 0;
+		left: 0;
+	}
+
+	.drawer-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: var(--primary-color, #3b82f6);
+		color: white;
+		border: none;
+		padding: 0.75rem 1rem;
+		border-radius: 8px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.2s;
+		font-size: 0.9rem;
+		box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+	}
+
+	.drawer-toggle:hover {
+		background: #2563eb;
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+	}
+
+	.drawer-toggle svg {
+		width: 20px;
+		height: 20px;
 	}
 
 	.welcome-title {
@@ -502,6 +557,16 @@
 	}
 
 	@media (max-width: 768px) {
+		.header-controls {
+			position: static;
+			text-align: left;
+			margin-bottom: 1rem;
+		}
+		
+		.drawer-toggle {
+			align-self: flex-start;
+		}
+
 		.event-details {
 			flex-direction: column;
 			gap: 0.5rem;
@@ -516,3 +581,6 @@
 		}
 	}
 </style>
+
+<!-- Drawer Navigation -->
+<DrawerNavigation isOpen={isDrawerOpen} on:close={closeDrawer} />
