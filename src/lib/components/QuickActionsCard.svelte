@@ -11,32 +11,11 @@
 	
 	const quickActions: QuickAction[] = [
 		{
-			icon: '📊',
-			title: 'Analytics',
-			description: 'View performance metrics',
-			href: '/business/analytics',
+			icon: '�',
+			title: 'ArgoCD',
+			description: 'Access ArgoCD dashboard',
+			href: 'https://argocd.bookwork-demo.com',
 			color: '#3b82f6'
-		},
-		{
-			icon: '⚙️',
-			title: 'Settings',
-			description: 'Configure preferences',
-			href: '/business/settings',
-			color: '#6b7280'
-		},
-		{
-			icon: '📋',
-			title: 'Reports',
-			description: 'Generate reports',
-			href: '/business/reports',
-			color: '#059669'
-		},
-		{
-			icon: '🔔',
-			title: 'Notifications',
-			description: 'Manage alerts',
-			href: '/business/notifications',
-			color: '#dc2626'
 		}
 	];
 </script>
@@ -44,7 +23,7 @@
 <div class="quick-actions-card" in:fly={{ y: 20, duration: 200 }}>
 	<div class="card-header">
 		<h3 class="card-title">⚡ Quick Actions</h3>
-		<span class="card-subtitle">Commonly used features</span>
+		<span class="card-subtitle">Requires Personal Github account.</span>
 	</div>
 	
 	<div class="actions-grid">
@@ -53,6 +32,8 @@
 				href={action.href} 
 				class="action-item"
 				style="--action-color: {action.color}"
+				target="_blank"
+				rel="noopener noreferrer"
 			>
 				<div class="action-icon">{action.icon}</div>
 				<div class="action-content">
