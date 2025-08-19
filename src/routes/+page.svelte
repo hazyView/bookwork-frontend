@@ -148,7 +148,7 @@
 					{/if}
 				</div>
 				<div class="card-wrapper">
-					<button class="quick-actions-btn" onclick={toggleQuickActionsCard}>ArgoCD log in</button>
+					<button class="quick-actions-btn" onclick={toggleQuickActionsCard}>Observability</button>
 					{#if showQuickActionsCard}
 						<QuickActionsCard />
 					{/if}

@@ -16,13 +16,26 @@
 			description: 'Access ArgoCD dashboard',
 			href: 'https://argocd.bookwork-demo.com',
 			color: '#3b82f6'
+		},
+		{
+			icon: '�',
+			title: 'Grafana',
+			description: 'View application metrics and dashboards',
+			href: 'https://grafana.bookwork-demo.com',
+			color: '#f97316'
+		},
+		{
+			icon: '�',
+			title: 'Prometheus',
+			description: 'Explore raw metrics data',
+			href: 'https://prometheus.bookwork-demo.com',
+			color: '#eab308'
 		}
 	];
 </script>
 
 <div class="quick-actions-card" in:fly={{ y: 20, duration: 200 }}>
 	<div class="card-header">
-		<h3 class="card-title">⚡ Quick Actions</h3>
 		<span class="card-subtitle">Requires Personal Github account.</span>
 	</div>
 	
