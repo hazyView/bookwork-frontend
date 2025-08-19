@@ -30,6 +30,13 @@
 			description: 'Explore raw metrics data',
 			href: 'https://prometheus.bookwork-demo.com',
 			color: '#eab308'
+		},
+		{
+			icon: '�',
+			title: 'Slack',
+			description: 'Slack Channel - Env/App Alerts',
+			href: 'https://fredapitesting.slack.com/archives/C0958PSUQ74',
+			color: '#2c60ab'
 		}
 	];
 </script>
@@ -76,7 +83,7 @@
 	.card-title {
 		font-size: 1.25rem;
 		font-weight: 600;
-		color: #1f2937;
+		color: rgb(44, 96, 171);
 		margin: 0 0 0.25rem 0;
 	}
 
