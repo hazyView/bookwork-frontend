@@ -1,6 +1,6 @@
 /**
  * Prometheus metrics service for SvelteKit application
- * Collects and exposes application metrics for monitoring and observability
+ * Collects and exposes standardized application metrics for monitoring and observability
  */
 
 import { register, collectDefaultMetrics, Counter, Histogram, Gauge } from 'prom-client';
@@ -16,22 +16,45 @@ collectDefaultMetrics({
 });
 
 /**
- * Custom application metrics
+ * Standardized application metrics following Prometheus best practices
  */
 export class ApplicationMetrics {
-  // HTTP request metrics
+  // Standardized HTTP request metrics (as required)
+  private static requestCount = new Counter({
+    name: 'request_count',
+    help: 'Total number of HTTP requests',
+    labelNames: ['method', 'route', 'status'] as const,
+    registers: [register]
+  });
+
+  private static requestLatency = new Histogram({
+    name: 'request_latency_seconds',
+    help: 'HTTP request latency in seconds',
+    labelNames: ['method', 'route', 'status'] as const,
+    buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+    registers: [register]
+  });
+
+  private static errorCount = new Counter({
+    name: 'error_count',
+    help: 'Total number of server errors (status >= 500)',
+    labelNames: ['method', 'route', 'status'] as const,
+    registers: [register]
+  });
+
+  // Additional application-specific metrics
   private static httpRequestsTotal = new Counter({
     name: 'bookwork_frontend_http_requests_total',
-    help: 'Total number of HTTP requests',
-    labelNames: ['method', 'route', 'status_code'],
+    help: 'Total number of HTTP requests (namespaced)',
+    labelNames: ['method', 'route', 'status_code'] as const,
     registers: [register]
   });
 
   private static httpRequestDuration = new Histogram({
     name: 'bookwork_frontend_http_request_duration_seconds',
-    help: 'Duration of HTTP requests in seconds',
-    labelNames: ['method', 'route', 'status_code'],
-    buckets: [0.1, 0.5, 1, 2, 5, 10],
+    help: 'Duration of HTTP requests in seconds (namespaced)',
+    labelNames: ['method', 'route', 'status_code'] as const,
+    buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
     registers: [register]
   });
 
@@ -39,14 +62,14 @@ export class ApplicationMetrics {
   private static pageLoads = new Counter({
     name: 'bookwork_frontend_page_loads_total',
     help: 'Total number of page loads',
-    labelNames: ['page'],
+    labelNames: ['page'] as const,
     registers: [register]
   });
 
   private static componentLoadTime = new Histogram({
     name: 'bookwork_frontend_component_load_duration_seconds',
     help: 'Time taken to load lazy components',
-    labelNames: ['component'],
+    labelNames: ['component'] as const,
     buckets: [0.01, 0.05, 0.1, 0.5, 1, 2],
     registers: [register]
   });
@@ -54,7 +77,7 @@ export class ApplicationMetrics {
   private static componentErrors = new Counter({
     name: 'bookwork_frontend_component_errors_total',
     help: 'Total number of component loading errors',
-    labelNames: ['component'],
+    labelNames: ['component'] as const,
     registers: [register]
   });
 
@@ -62,14 +85,14 @@ export class ApplicationMetrics {
   private static cacheHits = new Counter({
     name: 'bookwork_frontend_cache_hits_total',
     help: 'Total number of cache hits',
-    labelNames: ['cache_type'],
+    labelNames: ['cache_type'] as const,
     registers: [register]
   });
 
   private static cacheMisses = new Counter({
     name: 'bookwork_frontend_cache_misses_total',
     help: 'Total number of cache misses',
-    labelNames: ['cache_type'],
+    labelNames: ['cache_type'] as const,
     registers: [register]
   });
 
@@ -77,7 +100,7 @@ export class ApplicationMetrics {
   private static rateLimitHits = new Counter({
     name: 'bookwork_frontend_rate_limit_hits_total',
     help: 'Total number of rate limit hits',
-    labelNames: ['endpoint'],
+    labelNames: ['endpoint'] as const,
     registers: [register]
   });
 
@@ -92,16 +115,28 @@ export class ApplicationMetrics {
   private static securityEvents = new Counter({
     name: 'bookwork_frontend_security_events_total',
     help: 'Total number of security events',
-    labelNames: ['event_type'],
+    labelNames: ['event_type'] as const,
     registers: [register]
   });
 
   /**
-   * Record HTTP request metrics
+   * Record HTTP request metrics - implements standardized metrics as required
    */
   static recordHttpRequest(method: string, route: string, statusCode: number, duration: number) {
-    this.httpRequestsTotal.labels(method, route, statusCode.toString()).inc();
-    this.httpRequestDuration.labels(method, route, statusCode.toString()).observe(duration / 1000);
+    const status = String(statusCode);
+    
+    // Record standardized metrics (as required)
+    this.requestCount.labels(method, route, status).inc();
+    this.requestLatency.labels(method, route, status).observe(duration / 1000);
+    
+    // Record error count for server errors (status >= 500)
+    if (statusCode >= 500) {
+      this.errorCount.labels(method, route, status).inc();
+    }
+    
+    // Also record namespaced metrics for backward compatibility
+    this.httpRequestsTotal.labels(method, route, status).inc();
+    this.httpRequestDuration.labels(method, route, status).observe(duration / 1000);
   }
 
   /**
@@ -161,6 +196,21 @@ export class ApplicationMetrics {
    */
   static recordSecurityEvent(eventType: string) {
     this.securityEvents.labels(eventType).inc();
+  }
+
+  /**
+   * Get standardized metrics - exposes request_count, request_latency, and error_count
+   */
+  static getStandardizedMetrics(): {
+    requestCount: Counter<'method' | 'route' | 'status'>;
+    requestLatency: Histogram<'method' | 'route' | 'status'>;
+    errorCount: Counter<'method' | 'route' | 'status'>;
+  } {
+    return {
+      requestCount: this.requestCount,
+      requestLatency: this.requestLatency,
+      errorCount: this.errorCount
+    };
   }
 
   /**
