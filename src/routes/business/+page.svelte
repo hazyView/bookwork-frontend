@@ -201,8 +201,8 @@
 
 <style>
 	.hero {
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
+		background: var(--bg-gradient);
+		color: var(--text-primary);
 		padding: 6rem 0 4rem;
 		text-align: center;
 		position: relative;
@@ -219,9 +219,9 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		background: rgba(255, 255, 255, 0.2);
-		color: white;
-		border: 1px solid rgba(255, 255, 255, 0.3);
+		background: rgba(255, 255, 255, 0.1);
+		color: var(--text-primary);
+		border: 1px solid var(--border-secondary);
 		padding: 0.75rem 1rem;
 		border-radius: 8px;
 		font-weight: 600;
@@ -232,9 +232,9 @@
 	}
 
 	.drawer-toggle:hover {
-		background: rgba(255, 255, 255, 0.3);
+		background: rgba(255, 255, 255, 0.2);
 		transform: translateY(-1px);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 	}
 
 	.drawer-toggle svg {
@@ -270,14 +270,14 @@
 
 	.services-overview {
 		padding: 5rem 0;
-		background: white;
+		background: var(--bg-primary);
 	}
 
 	.section-title {
 		text-align: center;
 		margin-bottom: 3rem;
 		font-size: 2.5rem;
-		color: #1f2937;
+		color: var(--text-primary);
 	}
 
 	.services-grid {
@@ -302,7 +302,7 @@
 		justify-content: center;
 		width: 4rem;
 		height: 4rem;
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		background: var(--primary-gradient);
 		color: white;
 		border-radius: 1rem;
 		margin-bottom: 1.5rem;
@@ -312,17 +312,17 @@
 		font-size: 1.5rem;
 		font-weight: 600;
 		margin-bottom: 1rem;
-		color: #1f2937;
+		color: var(--text-primary);
 	}
 
 	.service-description {
-		color: #6b7280;
+		color: var(--text-secondary);
 		line-height: 1.6;
 		margin-bottom: 1.5rem;
 	}
 
 	.service-link {
-		color: #3b82f6;
+		color: var(--primary-color);
 		font-weight: 500;
 		text-decoration: none;
 	}
@@ -332,7 +332,7 @@
 	}
 
 	.stats-section {
-		background: #f9fafb;
+		background: var(--bg-secondary);
 		padding: 4rem 0;
 	}
 
@@ -352,18 +352,18 @@
 	.stat-number {
 		font-size: 3rem;
 		font-weight: 700;
-		color: #3b82f6;
+		color: var(--primary-color);
 		margin-bottom: 0.5rem;
 	}
 
 	.stat-label {
 		font-size: 1.125rem;
-		color: #6b7280;
+		color: var(--text-secondary);
 	}
 
 	.testimonials {
 		padding: 5rem 0;
-		background: white;
+		background: var(--bg-primary);
 	}
 
 	.testimonials-grid {
@@ -383,25 +383,25 @@
 
 	.testimonial-text {
 		font-style: italic;
-		color: #4b5563;
+		color: var(--text-secondary);
 		line-height: 1.6;
 		margin-bottom: 1.5rem;
 	}
 
 	.testimonial-author strong {
 		display: block;
-		color: #1f2937;
+		color: var(--text-primary);
 		margin-bottom: 0.25rem;
 	}
 
 	.testimonial-author span {
-		color: #6b7280;
+		color: var(--text-tertiary);
 		font-size: 0.875rem;
 	}
 
 	.cta {
-		background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-		color: white;
+		background: var(--bg-card);
+		color: var(--text-primary);
 		padding: 4rem 0;
 		text-align: center;
 	}

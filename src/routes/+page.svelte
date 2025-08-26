@@ -187,7 +187,7 @@
 	}
 
 	.nav-trigger:hover {
-		background: linear-gradient(to right, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
+		background: linear-gradient(to right, rgba(255, 107, 53, 0.1) 0%, transparent 100%);
 		width: 40px;
 	}
 
@@ -199,7 +199,7 @@
 		transform: translateY(-50%);
 		width: 3px;
 		height: 60px;
-		background: rgba(59, 130, 246, 0.3);
+		background: rgba(255, 107, 53, 0.3);
 		border-radius: 0 3px 3px 0;
 		opacity: 0;
 		transition: all 0.3s ease;
@@ -207,7 +207,7 @@
 
 	.nav-trigger:hover::before {
 		opacity: 1;
-		background: rgba(59, 130, 246, 0.6);
+		background: rgba(255, 107, 53, 0.6);
 	}
 
 	.page-container {
@@ -215,6 +215,7 @@
 		max-width: 1200px;
 		margin: 0 auto;
 		margin-left: 20px; /* Account for hover trigger */
+		color: var(--text-primary);
 	}
 
 	.hero-section {
@@ -226,26 +227,26 @@
 
 	.hero-title {
 		font-size: 2.5rem;
-		color: var(--primary-color, #3b82f6);
+		color: var(--text-primary);
 		margin-bottom: 0.5rem;
 		font-weight: 700;
 	}
 
 	.hero-subtitle {
 		font-size: 1.2rem;
-		color: #6b7280;
+		color: var(--text-secondary);
 		margin-bottom: 1rem;
 	}
 
 	.welcome-message {
 		font-size: 1.1rem;
-		color: #059669;
+		color: var(--success-color);
 		font-weight: 600;
-		background: #f0fdf4;
+		background: var(--bg-card);
 		padding: 0.75rem 1.5rem;
 		border-radius: 8px;
 		display: inline-block;
-		border: 1px solid #bbf7d0;
+		border: 1px solid var(--border-card);
 	}
 
 	.dashboard-grid {
@@ -256,17 +257,17 @@
 	}
 
 	.dashboard-card {
-		background: white;
+		background: var(--bg-card);
 		border-radius: 12px;
 		padding: 1.5rem;
-		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-		border: 1px solid #e5e7eb;
+		box-shadow: var(--shadow-lg);
+		border: 1px solid var(--border-card);
 		transition: transform 0.2s, box-shadow 0.2s;
 	}
 
 	.dashboard-card:hover {
 		transform: translateY(-2px);
-		box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.15);
+		box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 	}
 
 	.card-icon {
@@ -278,18 +279,18 @@
 	.card-title {
 		font-size: 1.25rem;
 		font-weight: 600;
-		color: #1f2937;
+		color: var(--text-primary);
 		margin-bottom: 0.5rem;
 	}
 
 	.card-description {
-		color: #6b7280;
+		color: var(--text-secondary);
 		line-height: 1.6;
 		margin-bottom: 1.5rem;
 	}
 
 	.card-button {
-		background: var(--primary-color, #3b82f6);
+		background: var(--primary-color);
 		color: white;
 		border: none;
 		padding: 0.75rem 1.5rem;
@@ -301,10 +302,8 @@
 	}
 
 	.card-button:hover {
-		background: #2563eb;
-	}
-
-	.nav-links {
+		background: var(--primary-hover);
+	}	.nav-links {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 1rem;
@@ -312,7 +311,7 @@
 	}
 
 	.nav-link {
-		background: var(--primary-color, #3b82f6);
+		background: var(--primary-color);
 		color: white;
 		text-decoration: none;
 		padding: 0.75rem 1.25rem;
@@ -323,22 +322,22 @@
 	}
 
 	.nav-link:hover {
-		background: #2563eb;
+		background: var(--primary-hover);
 		transform: translateY(-1px);
-		box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+		box-shadow: 0 4px 8px rgba(255, 107, 53, 0.3);
 	}
 
 	.status-section {
-		background: #f8fafc;
+		background: var(--bg-card);
 		padding: 2rem;
 		border-radius: 12px;
 		margin-bottom: 2rem;
-		border: 1px solid #e2e8f0;
+		border: 1px solid var(--border-card);
 	}
 
 	.status-title {
 		font-size: 1.5rem;
-		color: #1f2937;
+		color: var(--text-primary);
 		margin-bottom: 1rem;
 		font-weight: 600;
 	}
@@ -354,9 +353,9 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.75rem;
-		background: white;
+		background: var(--bg-tertiary);
 		border-radius: 6px;
-		border: 1px solid #e5e7eb;
+		border: 1px solid var(--border-secondary);
 	}
 
 	.status-dot {
@@ -367,30 +366,30 @@
 	}
 
 	.status-dot.green {
-		background: #10b981;
+		background: var(--success-color);
 	}
 
 	.status-label {
-		color: #6b7280;
+		color: var(--text-secondary);
 		font-weight: 500;
 		flex: 1;
 	}
 
 	.status-value {
-		color: #1f2937;
+		color: var(--text-primary);
 		font-weight: 600;
 		font-size: 0.9rem;
 	}
 
 	.debug-section {
-		background: #f3f4f6;
+		background: var(--bg-card);
 		padding: 1.5rem;
 		border-radius: 8px;
-		border-left: 4px solid var(--primary-color, #3b82f6);
+		border-left: 4px solid var(--primary-color);
 	}
 
 	.debug-title {
-		color: #374151;
+		color: var(--text-primary);
 		margin-bottom: 1rem;
 		font-size: 1.1rem;
 		font-weight: 600;
@@ -399,7 +398,7 @@
 	.debug-info {
 		font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 		font-size: 0.9rem;
-		color: #4b5563;
+		color: var(--text-secondary);
 		line-height: 1.6;
 	}
 
@@ -408,7 +407,7 @@
 	}
 
 	.debug-info strong {
-		color: #1f2937;
+		color: var(--text-primary);
 		font-weight: 600;
 	}
 
@@ -440,13 +439,13 @@
 	}
 /* Github Repos Section Styling */
 .github-repos-section {
-	background: #f8fafc;
+	background: var(--bg-card);
 	border-radius: 12px;
-	border: 1px solid #e2e8f0;
+	border: 1px solid var(--border-card);
 	margin-top: 2rem;
 	margin-bottom: 2rem;
 	padding: 1.5rem;
-	box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+	box-shadow: var(--shadow-lg);
 }
 
 .cards-container {
@@ -464,7 +463,7 @@
 
 .github-repos-btn,
 .quick-actions-btn {
-	background: var(--primary-color, #3b82f6);
+	background: var(--primary-color);
 	color: white;
 	border: none;
 	padding: 0.75rem 1.5rem;
@@ -473,24 +472,24 @@
 	cursor: pointer;
 	transition: background-color 0.2s, box-shadow 0.2s;
 	margin-bottom: 1rem;
-	box-shadow: 0 2px 6px rgba(59,130,246,0.08);
+	box-shadow: 0 2px 6px rgba(255, 107, 53, 0.2);
 	font-size: 1rem;
 }
 
 .github-repos-btn:hover,
 .quick-actions-btn:hover {
-	background: #2563eb;
-	box-shadow: 0 4px 12px rgba(59,130,246,0.15);
+	background: var(--primary-hover);
+	box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
 }
 
 .quick-actions-btn {
-	background: #059669;
-	box-shadow: 0 2px 6px rgba(5,150,105,0.08);
+	background: var(--success-color);
+	box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
 }
 
 .quick-actions-btn:hover {
-	background: #047857;
-	box-shadow: 0 4px 12px rgba(5,150,105,0.15);
+	background: #059669;
+	box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 /* Responsive adjustments */

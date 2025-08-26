@@ -173,15 +173,16 @@
 	}
 
 	.nav {
-		background: var(--primary-color, #3b82f6);
-		color: white;
+		background: var(--bg-card);
+		color: var(--text-primary);
 		padding: 0;
 		position: fixed;
 		top: 0;
 		left: 0;
 		right: 0;
 		z-index: 100;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+		border-bottom: 1px solid var(--border-card);
 	}
 
 	.nav-content {
@@ -215,12 +216,13 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		background-color: var(--bg-color, #ffffff);
+		background: var(--bg-gradient);
+		color: var(--text-primary);
 	}
 
 	.loading-screen p {
 		margin-top: 1rem;
-		color: var(--text-secondary, #666);
+		color: var(--text-secondary);
 	}
 
 	.auth-screen {
@@ -228,8 +230,8 @@
 		align-items: center;
 		justify-content: center;
 		min-height: 100vh;
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
+		background: var(--bg-gradient);
+		color: var(--text-primary);
 	}
 
 	.auth-container {
@@ -246,8 +248,8 @@
 	.spinner {
 		width: 40px;
 		height: 40px;
-		border: 4px solid var(--border-color, #e0e0e0);
-		border-top: 4px solid var(--primary-color, #3b82f6);
+		border: 4px solid var(--border-secondary);
+		border-top: 4px solid var(--primary-color);
 		border-radius: 50%;
 		animation: spin 1s linear infinite;
 	}
@@ -271,23 +273,24 @@
 	}
 
 	.btn-primary {
-		background-color: var(--primary-color, #3b82f6);
+		background: var(--primary-gradient);
 		color: white;
+		border: none;
 	}
 
 	.btn-primary:hover {
-		background-color: var(--primary-hover, #2563eb);
+		background: var(--primary-hover);
 	}
 
 	.btn-outline {
 		background-color: transparent;
-		color: white;
-		border: 1px solid rgba(255, 255, 255, 0.3);
+		color: var(--text-primary);
+		border: 1px solid var(--border-secondary);
 	}
 
 	.btn-outline:hover {
-		background-color: rgba(255, 255, 255, 0.1);
-		border-color: rgba(255, 255, 255, 0.5);
+		background-color: var(--bg-tertiary);
+		border-color: var(--border-primary);
 	}
 
 	.mt-4 {
@@ -297,20 +300,21 @@
 	.demo-credentials {
 		margin-top: 2rem;
 		padding: 1rem;
-		background: #f0f9ff;
-		border: 1px solid #bae6fd;
+		background: var(--bg-card);
+		border: 1px solid var(--border-card);
 		border-radius: 0.375rem;
 	}
 
 	.demo-credentials p {
 		margin: 0.25rem 0;
 		font-size: 0.875rem;
-		color: #0369a1;
+		color: var(--text-secondary);
 	}
 
 	.demo-credentials p:first-child {
 		font-weight: 600;
 		margin-bottom: 0.5rem;
+		color: var(--text-primary);
 	}
 
 	@media (max-width: 768px) {

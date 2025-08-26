@@ -100,7 +100,7 @@
 		left: 0;
 		width: 100vw;
 		height: 100vh;
-		background: rgba(0, 0, 0, 0.5);
+		background: var(--bg-overlay);
 		z-index: 1000;
 		display: flex;
 		align-items: flex-start;
@@ -109,11 +109,12 @@
 	.drawer {
 		width: 320px;
 		height: 100vh;
-		background: white;
-		box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+		background: var(--bg-card);
+		box-shadow: 2px 0 12px rgba(0, 0, 0, 0.4);
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
+		border-right: 1px solid var(--border-card);
 	}
 
 	.drawer-header {
@@ -121,9 +122,9 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 1.5rem;
-		border-bottom: 1px solid #e5e7eb;
-		background: var(--primary-color, #3b82f6);
-		color: white;
+		border-bottom: 1px solid var(--border-card);
+		background: var(--bg-tertiary);
+		color: var(--text-primary);
 	}
 
 	.drawer-title {
@@ -135,7 +136,7 @@
 	.close-button {
 		background: none;
 		border: none;
-		color: white;
+		color: var(--text-primary);
 		cursor: pointer;
 		padding: 0.5rem;
 		border-radius: 4px;
@@ -146,7 +147,7 @@
 	}
 
 	.close-button:hover {
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--bg-primary);
 	}
 
 	.drawer-content {
@@ -168,14 +169,14 @@
 		display: block;
 		padding: 1rem 1.5rem;
 		text-decoration: none;
-		color: #374151;
+		color: var(--text-primary);
 		transition: background-color 0.2s;
 		border-left: 3px solid transparent;
 	}
 
 	.nav-link:hover {
-		background: #f9fafb;
-		border-left-color: var(--primary-color, #3b82f6);
+		background: var(--bg-tertiary);
+		border-left-color: var(--primary-color);
 	}
 
 	.nav-label {
@@ -188,27 +189,27 @@
 	.nav-description {
 		display: block;
 		font-size: 0.875rem;
-		color: #6b7280;
+		color: var(--text-secondary);
 	}
 
 	.drawer-footer {
 		padding: 1.5rem;
-		border-top: 1px solid #e5e7eb;
-		background: #f9fafb;
+		border-top: 1px solid var(--border-card);
+		background: var(--bg-tertiary);
 		text-align: center;
 	}
 
 	.footer-text {
 		margin: 0 0 0.25rem 0;
 		font-weight: 600;
-		color: #374151;
+		color: var(--text-primary);
 		font-size: 0.875rem;
 	}
 
 	.footer-version {
 		margin: 0;
 		font-size: 0.75rem;
-		color: #6b7280;
+		color: var(--text-secondary);
 	}
 
 	@media (max-width: 768px) {
