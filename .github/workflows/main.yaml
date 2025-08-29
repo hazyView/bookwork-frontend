@@ -58,7 +58,7 @@ jobs:
           IMAGE_FQN: ${{ steps.build-image.outputs.IMAGE_FQN }}
         run: |
           IMAGE_TAG=$(echo $IMAGE_FQN | cut -d':' -f2)
-          cd gitops/tenants/bookwork/base
+          cd gitops/manifests/bookwork/base/components/frontend
           kustomize edit set image $IMAGE_FQN
           git config user.name "GitHub Actions Bot"
           git config user.email "actions-bot@github.com"
