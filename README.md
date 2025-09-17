@@ -466,3 +466,4 @@ npm run preview
 
 **BookWork** - Connecting authors with passionate readers through technology and community.
 
+minor update in readme to trigger new build and deployment to new GAR
